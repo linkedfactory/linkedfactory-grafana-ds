@@ -6,7 +6,7 @@ define([
 	'app/core/utils/kbn',
 	'./query_ctrl'
 ],
-function phoo(angular, _, sdk, dateMath, kbn) {
+function (angular, _, sdk, dateMath, kbn) {
 	'use strict';
 
 	var self;
@@ -15,12 +15,14 @@ function phoo(angular, _, sdk, dateMath, kbn) {
 		this.type = instanceSettings.type;
 		this.url = instanceSettings.url;
 		this.name = instanceSettings.name;
-		this.limit = 1000; // FIXME! add to config
-		this.intervalSteps = 10000; // FIXME! add to config
 		this.supportMetrics = true;
 		this.q = $q;
 		this.backendSrv = backendSrv;
 		this.templateSrv = templateSrv;
+
+		// FIXME! add these to the ds config, and maybe metric config
+		this.limit = 1000;
+		this.intervalSteps = 10000;
 
 		self = this;
 	}

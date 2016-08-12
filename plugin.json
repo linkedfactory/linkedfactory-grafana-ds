@@ -14,7 +14,7 @@
 			"name" : "Marko Friedemann, Ken Wenzel",
 			"url" : "http://linkedfactory.iwu.fraunhofer.de/"
 		},
-		"keywords" : [ "eniLINK", "LinkedFactory", "LevelDB" ],
+		"keywords" : [ "LinkedFactory", "eniLINK", "LevelDB" ],
 		"logos" : {
 			"small" : "img/enilink-logo64x64.png",
 			"large" : "img/enilink-logo512x512.png"
@@ -23,8 +23,8 @@
 			"name" : "LinkedFactory",
 			"url" : "http://linkedfactory.iwu.fraunhofer.de/"
 		} ],
-		"version" : "0.0.1",
-		"updated" : "2016-08-09"
+		"version" : "0.0.2",
+		"updated" : "2016-08-12"
 	},
 
 	"dependencies" : {
