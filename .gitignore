@@ -1,0 +1,7 @@
+dist/test/*
+spec/*
+
+yarn*
+npm-debug*
+
+node_modules/*

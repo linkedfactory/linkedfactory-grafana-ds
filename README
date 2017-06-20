@@ -1,0 +1,11 @@
+
+# before making changes, install grunt, grunt-watch and grunt-cli
+
+npm install grunt-contrib-watch
+npm install grunt
+npm install -g grunt-cli
+
+# then run grunt watch in a background shell to update dist/ from /src
+
+grunt watch
+
