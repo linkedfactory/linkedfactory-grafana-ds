@@ -9,19 +9,21 @@ export class LFDatasource {
     this.q = $q;
     this.backendSrv = backendSrv;
     this.templateSrv = templateSrv;
+    this.buckets = 2; // FIXME! calculate this value
+    this.maxDataPoints = 10000; // FIXME! calculate this value
   }
 
   query (options) {
     var self = this;
     var query = this.buildQueryParameters(options);
     //query.targets = query.targets.filter(t => !t.hide);
-    query.targets = query.targets.filter((t) =>{ return !t.hide; });
+    query.targets = query.targets.filter(t => { return !t.hide; });
 
     if (query.targets.length <= 0) {
       return this.q.when({ data : [] });
     }
 
-    // FIXME! use individual queries
+
     var items = [];
     var properties = [];
 
@@ -56,16 +58,20 @@ export class LFDatasource {
 
             // get the config entry to access scale etc.
             //var target = _.filter(query.targets, target => {
-            var target = _.filter(query.targets,(target) => {
-              return (v.item === target.item && v.property === target.property);
+            var target = _.filter(query.targets, target => {
+              // FIXME: change handling of item/property
+              var _item = target.item.split(/[ ]+/)[1];
+              var _property = target.property.split(/[ ]+/)[1];
+              return (v.item === _item && v.property === _property);
             })[0];
-            var scale = (target ? target.scale : 1);
+            var scale = (target && target.scale ? target.scale : 1);
+
             if (typeof scale === 'undefined') {
               scale = 1;
             }
 
             //var datapoints = values.map(d => {
-            var datapoints = values.map((d) => {
+            var datapoints = values.map(d => {
               return [ d.value * scale, d.time ];
             });
             return { target : targetName, datapoints : datapoints };
@@ -76,7 +82,7 @@ export class LFDatasource {
 
   testDatasource() {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/',
+      url: this.url + '/values',
       method: 'GET'
     }).then(response => {
       if (response.status === 200) {
@@ -97,7 +103,8 @@ export class LFDatasource {
   }
 //
 loadData(items, properties, from, to) {
-  var interval = Math.round((to - from) / this.intervalSteps);
+  var interval = Math.round((to - from) / this.maxDataPoints);
+  var limit = this.maxDataPoints / this.buckets;
   var self = this;
   return this.backendSrv
       .datasourceRequest({
@@ -107,7 +114,7 @@ loadData(items, properties, from, to) {
           properties : properties,
           from : from,
           to : to,
-          limit : this.limit,
+          limit : limit,
           interval : interval,
           // FIXME: use setting from config (target.downsampling, maybe?)
           op : 'avg'
@@ -116,7 +123,7 @@ loadData(items, properties, from, to) {
         headers : { 'Content-Type' : 'application/json'	}
       })
       //.then(response => {
-      .then((response) => {
+      .then(response => {
         if (response.status === 200) {
           var loadOlderData = false;
           var promises = [];
@@ -137,14 +144,14 @@ loadData(items, properties, from, to) {
                 newPropertyData.reverse();
               }
 
-              if (newPropertyData.length == self.limit) {
+              if (newPropertyData.length == limit) {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 var localTo = newPropertyData[0].time - 1;
                 promises.push(
                     self.loadData(item, property, from, localTo)
                       //.then(d => {
-                      .then((d) => {
+                      .then(d => {
                         // FIXME: d is an array! handle appropriately
                         return { item : item, property : property, values : d[0].values.concat(newPropertyData) };
                       }));
@@ -184,15 +191,11 @@ itemFindQuery(query) {
     });
   }
   return this.items.then((items) => {
-    return items.map((bindUrl,itemUrl,itemUrlUp,strShort, str) => {
-      //console.log(e['@id']);
+    return items.map((bindUrl,itemUrl,itemUrlUp,strShort) => {
       itemUrl= bindUrl['@id'];
       itemUrlUp= itemUrl.toUpperCase();
       strShort= this.localPart(itemUrlUp);
-      // displays the content of the string in bold an a different color in the dropdown-menu, but in the text-field it transforms the functions into string elements
-      /*strBo= strShort.bold();
-      str= strBo.fontcolor( "redorange" );*/
-      return { text: strShort +":  "+itemUrl, html: str +"  "+ itemUrl, value: itemUrl};
+      return { text: strShort +":  "+itemUrl, value: itemUrl};
     });
   });
 };
@@ -204,7 +207,6 @@ propertyFindQuery(item, query) {
       url: this.url + '/properties?item=',
       method: 'GET'
     }).then(response => {
-      console.log(response);
       if (response.status === 200) {
         return response.data;
       };
@@ -218,7 +220,6 @@ propertyFindQuery(item, query) {
       url: this.url + '/properties?item=' + this.localPart2(item),
       method: 'GET'
     }).then(response => {
-      //console.log(response);
       if (response.status === 200) {
         return response.data;
       };
@@ -232,8 +233,6 @@ propertyFindQuery(item, query) {
       propertyUrl= bindUrl['@id'];
       propertyUrlUp= propertyUrl.toUpperCase();
       result = propertyUrlUp;
-      //result = propertyUrlUp.fontcolor("green");
-      //text: this.localPart(e['@id'])
       return  { text: this.localPart(result) +": "+ propertyUrl, value: propertyUrl};
     });
   });
@@ -283,6 +282,7 @@ localPart2(uriString) {
 }
 
 
+
 	// instead of Promise.all(), which isn't supported by some browsers,
 	// use this version, courtesy of https://www.promisejs.org/patterns/
 promiseAll(promises) {
@@ -301,4 +301,5 @@ promiseAll(promises) {
 			return accumulator;
 		});
 	}
+
 }

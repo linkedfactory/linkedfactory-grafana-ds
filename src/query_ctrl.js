@@ -38,10 +38,6 @@ getOptionsProperties(query){
     this.panelCtrl.refresh(); // Asks the panel to refresh data.
   }
 
-  /*removeInput(){
-    propertyObj = document.getElementsById("property");
-    propertyObj.parentNode.removeChild(propertyObj);
-  }*/
 }
 
 LFDatasourceQueryCtrl.templateUrl = 'partials/query.editor.html';

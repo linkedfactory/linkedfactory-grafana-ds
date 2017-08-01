@@ -3,9 +3,7 @@
   <div class="gf-form-inline" id="form">
     <div class="gf-form">
       <div class="gf-form-label query-keyword width-4">Item</div>
-      <!--input type="text" class="gf-form-input" ng-model="ctrl.target.item"
-      spellcheck='false' ng-blur="ctrl.onChangeInternal()" style="color:blue"-->
-      <metric-segment-model property="ctrl.target.item" get-options="ctrl.getOptionsItems($query)" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge" >
+      <metric-segment-model property="ctrl.target.item" get-options="ctrl.getOptionsItems($query)" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge">
       </metric-segment-model>
     </div>
     <div class="gf-form">
@@ -16,11 +14,10 @@
     <div class="gf-form">
       <div class="gf-form-label query-keyword width-4">Scale</div>
       <input type="text" class="gf-form-input width-4" ng-model="ctrl.target.scale"
-      spellcheck='false' placeholder="1" ng-blur="ctrl.onChangeInternal()">
+      spellcheck='false' placeholder="select scaling factor" ng-blur="ctrl.onChangeInternal()">
     </div>
     <div class="gf-form gf-form--grow">
       <div class="gf-form-label gf-form-label--grow"></div>
     </div>
-    <!--button href="#" onClick="removeInput();">DEL</button-->
   </div>
 </query-editor-row>

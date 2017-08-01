@@ -44,6 +44,8 @@ System.register(['lodash'], function (_export, _context) {
           this.q = $q;
           this.backendSrv = backendSrv;
           this.templateSrv = templateSrv;
+          this.buckets = 2; // FIXME! calculate this value
+          this.maxDataPoints = 10000; // FIXME! calculate this value
         }
 
         _createClass(LFDatasource, [{
@@ -60,7 +62,6 @@ System.register(['lodash'], function (_export, _context) {
               return this.q.when({ data: [] });
             }
 
-            // FIXME! use individual queries
             var items = [];
             var properties = [];
 
@@ -93,9 +94,13 @@ System.register(['lodash'], function (_export, _context) {
                 // get the config entry to access scale etc.
                 //var target = _.filter(query.targets, target => {
                 var target = _.filter(query.targets, function (target) {
-                  return v.item === target.item && v.property === target.property;
+                  // FIXME: change handling of item/property
+                  var _item = target.item.split(/[ ]+/)[1];
+                  var _property = target.property.split(/[ ]+/)[1];
+                  return v.item === _item && v.property === _property;
                 })[0];
-                var scale = target ? target.scale : 1;
+                var scale = target && target.scale ? target.scale : 1;
+
                 if (typeof scale === 'undefined') {
                   scale = 1;
                 }
@@ -113,7 +118,7 @@ System.register(['lodash'], function (_export, _context) {
           key: 'testDatasource',
           value: function testDatasource() {
             return this.backendSrv.datasourceRequest({
-              url: this.url + '/',
+              url: this.url + '/values',
               method: 'GET'
             }).then(function (response) {
               if (response.status === 200) {
@@ -135,7 +140,8 @@ System.register(['lodash'], function (_export, _context) {
         }, {
           key: 'loadData',
           value: function loadData(items, properties, from, to) {
-            var interval = Math.round((to - from) / this.intervalSteps);
+            var interval = Math.round((to - from) / this.maxDataPoints);
+            var limit = this.maxDataPoints / this.buckets;
             var self = this;
             return this.backendSrv.datasourceRequest({
               url: this.url + '/values',
@@ -144,7 +150,7 @@ System.register(['lodash'], function (_export, _context) {
                 properties: properties,
                 from: from,
                 to: to,
-                limit: this.limit,
+                limit: limit,
                 interval: interval,
                 // FIXME: use setting from config (target.downsampling, maybe?)
                 op: 'avg'
@@ -174,7 +180,7 @@ System.register(['lodash'], function (_export, _context) {
                       newPropertyData.reverse();
                     }
 
-                    if (newPropertyData.length == self.limit) {
+                    if (newPropertyData.length == limit) {
                       // limit reached, fetch earlier blocks, keep from
                       // but stop at earliest time already read - 1
                       var localTo = newPropertyData[0].time - 1;
@@ -220,15 +226,11 @@ System.register(['lodash'], function (_export, _context) {
               });
             }
             return this.items.then(function (items) {
-              return items.map(function (bindUrl, itemUrl, itemUrlUp, strShort, str) {
-                //console.log(e['@id']);
+              return items.map(function (bindUrl, itemUrl, itemUrlUp, strShort) {
                 itemUrl = bindUrl['@id'];
                 itemUrlUp = itemUrl.toUpperCase();
                 strShort = _this.localPart(itemUrlUp);
-                // displays the content of the string in bold an a different color in the dropdown-menu, but in the text-field it transforms the functions into string elements
-                /*strBo= strShort.bold();
-                str= strBo.fontcolor( "redorange" );*/
-                return { text: strShort + ":  " + itemUrl, html: str + "  " + itemUrl, value: itemUrl };
+                return { text: strShort + ":  " + itemUrl, value: itemUrl };
               });
             });
           }
@@ -242,7 +244,6 @@ System.register(['lodash'], function (_export, _context) {
                 url: this.url + '/properties?item=',
                 method: 'GET'
               }).then(function (response) {
-                console.log(response);
                 if (response.status === 200) {
                   return response.data;
                 };
@@ -256,7 +257,6 @@ System.register(['lodash'], function (_export, _context) {
                 url: this.url + '/properties?item=' + this.localPart2(item),
                 method: 'GET'
               }).then(function (response) {
-                //console.log(response);
                 if (response.status === 200) {
                   return response.data;
                 };
@@ -270,8 +270,6 @@ System.register(['lodash'], function (_export, _context) {
                 propertyUrl = bindUrl['@id'];
                 propertyUrlUp = propertyUrl.toUpperCase();
                 result = propertyUrlUp;
-                //result = propertyUrlUp.fontcolor("green");
-                //text: this.localPart(e['@id'])
                 return { text: _this2.localPart(result) + ": " + propertyUrl, value: propertyUrl };
               });
             });
