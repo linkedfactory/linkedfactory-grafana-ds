@@ -88,7 +88,7 @@ System.register(['lodash'], function (_export, _context) {
             .then(function (results) {
               //var data = results.map(v => {
               var data = results.map(function (v) {
-                var targetName = self.displayName("http://linkedfactory.iwu.fraunhofer.de/linkedfactory/", "lf:", v.item, v.property);
+                var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
                 var values = v.values;
 
                 // get the config entry to access scale etc.
@@ -228,9 +228,7 @@ System.register(['lodash'], function (_export, _context) {
             return this.items.then(function (items) {
               return items.map(function (bindUrl, itemUrl, itemUrlUp, strShort) {
                 itemUrl = bindUrl['@id'];
-                itemUrlUp = itemUrl.toUpperCase();
-                strShort = _this.localPart(itemUrlUp);
-                return { text: strShort + ":  " + itemUrl, value: itemUrl };
+                return { text: _this.displayNameFromUrl(itemUrl), value: itemUrl };
               });
             });
           }
@@ -254,7 +252,7 @@ System.register(['lodash'], function (_export, _context) {
             }
             if (item) {
               this.properties = this.backendSrv.datasourceRequest({
-                url: this.url + '/properties?item=' + this.localPart2(item),
+                url: this.url + '/properties?item=' + this.urlFromDisplayName(item).trim(),
                 method: 'GET'
               }).then(function (response) {
                 if (response.status === 200) {
@@ -270,7 +268,7 @@ System.register(['lodash'], function (_export, _context) {
                 propertyUrl = bindUrl['@id'];
                 propertyUrlUp = propertyUrl.toUpperCase();
                 result = propertyUrlUp;
-                return { text: _this2.localPart(result) + ": " + propertyUrl, value: propertyUrl };
+                return { text: _this2.displayNameFromUrl(propertyUrl), value: propertyUrl };
               });
             });
           }
@@ -304,9 +302,13 @@ System.register(['lodash'], function (_export, _context) {
             return options;
           }
         }, {
-          key: 'displayName',
-          value: function displayName(prefixStr, prefix, item, property) {
+          key: 'prefixName',
+          value: function prefixName(prefixStr, prefix, item, property) {
+            //    if (item.indexOf(prefixStr) > -1) {
             return item.replace(prefixStr, prefix) + '@' + this.localPart(property);
+            //    } else {
+            //      return item.replace(prefixStr.replace("https://", "http://"), prefix) + '@' + this.localPart(property);
+            //    }
           }
         }, {
           key: 'localPart',
@@ -315,10 +317,14 @@ System.register(['lodash'], function (_export, _context) {
             return uriString.substring(uriString.lastIndexOf(separator) + 1);
           }
         }, {
-          key: 'localPart2',
-          value: function localPart2(uriString) {
-            var separator = uriString.lastIndexOf('#') > 0 ? '#' : ':';
-            return uriString.substring(uriString.lastIndexOf(separator) + -4);
+          key: 'displayNameFromUrl',
+          value: function displayNameFromUrl(url) {
+            return this.localPart(url).toUpperCase() + ": " + url;
+          }
+        }, {
+          key: 'urlFromDisplayName',
+          value: function urlFromDisplayName(displayName) {
+            return displayName.substring(displayName.lastIndexOf(': ') + 2);
           }
         }, {
           key: 'promiseAll',

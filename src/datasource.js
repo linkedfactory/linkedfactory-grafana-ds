@@ -53,7 +53,7 @@ export class LFDatasource {
         .then((results) => {
           //var data = results.map(v => {
           var data = results.map((v) => {
-            var targetName = self.displayName("http://linkedfactory.iwu.fraunhofer.de/linkedfactory/", "lf:", v.item, v.property);
+            var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
             var values = v.values;
 
             // get the config entry to access scale etc.
@@ -193,9 +193,7 @@ itemFindQuery(query) {
   return this.items.then((items) => {
     return items.map((bindUrl,itemUrl,itemUrlUp,strShort) => {
       itemUrl= bindUrl['@id'];
-      itemUrlUp= itemUrl.toUpperCase();
-      strShort= this.localPart(itemUrlUp);
-      return { text: strShort +":  "+itemUrl, value: itemUrl};
+      return { text: this.displayNameFromUrl(itemUrl), value: itemUrl};
     });
   });
 };
@@ -217,7 +215,7 @@ propertyFindQuery(item, query) {
   }
   if (item) {
     this.properties = this.backendSrv.datasourceRequest({
-      url: this.url + '/properties?item=' + this.localPart2(item),
+      url: this.url + '/properties?item=' + this.urlFromDisplayName(item).trim(),
       method: 'GET'
     }).then(response => {
       if (response.status === 200) {
@@ -233,7 +231,7 @@ propertyFindQuery(item, query) {
       propertyUrl= bindUrl['@id'];
       propertyUrlUp= propertyUrl.toUpperCase();
       result = propertyUrlUp;
-      return  { text: this.localPart(result) +": "+ propertyUrl, value: propertyUrl};
+      return  { text: this.displayNameFromUrl(propertyUrl), value: propertyUrl};
     });
   });
 };
@@ -266,22 +264,29 @@ propertyFindQuery(item, query) {
   }
   //
   // helper to construct a short display name for item + property
-	displayName(prefixStr, prefix, item, property) {
-		return item.replace(prefixStr, prefix) + '@' + this.localPart(property);
+	prefixName(prefixStr, prefix, item, property) {
+//    if (item.indexOf(prefixStr) > -1) {
+      return item.replace(prefixStr, prefix) + '@' + this.localPart(property);
+//    } else {
+//      return item.replace(prefixStr.replace("https://", "http://"), prefix) + '@' + this.localPart(property);
+//    }
 	}
+
   // helper to get the localPart of an URI (used to display short properties)
 	localPart(uriString) {
 		var separator = (uriString.lastIndexOf('#') > 0 ? '#' : '/');
 		return uriString.substring(uriString.lastIndexOf(separator) + 1);
 	}
 
-// helper to shorten the item string for propertyFindQuery
-localPart2(uriString) {
-  var separator = (uriString.lastIndexOf('#') > 0 ? '#' : ':');
-  return uriString.substring(uriString.lastIndexOf(separator) + -4);
-}
+  // helper to generate display name from url
+  displayNameFromUrl(url) {
+    return this.localPart(url).toUpperCase() + ": " + url;
+  }
 
-
+  // helper to shorten the item string for propertyFindQuery
+  urlFromDisplayName(displayName) {
+    return displayName.substring(displayName.lastIndexOf(': ') + 2);
+  }
 
 	// instead of Promise.all(), which isn't supported by some browsers,
 	// use this version, courtesy of https://www.promisejs.org/patterns/
