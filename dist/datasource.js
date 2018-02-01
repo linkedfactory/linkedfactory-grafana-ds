@@ -101,10 +101,6 @@ System.register(['lodash'], function (_export, _context) {
                 })[0];
                 var scale = target && target.scale ? target.scale : 1;
 
-                if (typeof scale === 'undefined') {
-                  scale = 1;
-                }
-
                 //var datapoints = values.map(d => {
                 var datapoints = values.map(function (d) {
                   return [d.value * scale, d.time];
