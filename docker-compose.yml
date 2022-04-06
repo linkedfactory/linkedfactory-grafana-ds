@@ -1,0 +1,8 @@
+version: "3.3"
+services:
+  grafana:
+    image: "grafana/grafana:4.3.2"
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./dist/:/var/lib/grafana/plugins/lf-datasource/"
