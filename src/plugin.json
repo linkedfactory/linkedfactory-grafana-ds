@@ -1,0 +1,43 @@
+{
+"type": "datasource",
+  "name": "grafana-lf-datasource",
+  "id": "iwu-grafana-lf-datasource",
+  "metrics": true,
+  "info": {
+    "description": "LinkedFactory Datasource Plugin",
+    "author": {
+      "name": "Lukas Strechel",
+      "url": "http://linkedfactory.iwu.fraunhofer.de"
+    },
+    "keywords": [
+      "LinkedFactory"
+    ],
+    "logos": {
+      "small": "img/enilink-logo64x64.png",
+      "large": "img/enilink-logo512x512.png"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://github.com/grafana/grafana-starter-datasource"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/grafana/grafana-starter-datasource/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "0.1.0",
+    "updated": "2022-05-06"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=7.0.0",
+    "plugins": []
+  },
+  "routes": [
+    {
+      "path": "linkedfactory",
+      "url": "http://localhost:8080/linkedfactory/"
+    }
+  ]
+}
