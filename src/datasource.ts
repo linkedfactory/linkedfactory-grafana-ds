@@ -13,18 +13,31 @@ import { MyQuery, MyDataSourceOptions, defaultQuery } from './types';
 
 export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url?: string;
+  settings?: any;
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
-    this.url = instanceSettings.url;
+    this.url = instanceSettings.jsonData.url;
+    this.settings = instanceSettings;
+  }
+
+  urlBuilder(query){
+    var factory = '';
+    var machine = '';
+    var sensor = '';
+
+    if(query.factory) factory = query.factory;
+    if(query.machine) machine = query.machine;
+    if(query.sensor) sensor = query.sensor;
+
+    var buildUrl = this.url + '/values?item=' + this.url + '/' + factory + '/' + machine + '/' + sensor;
+    return buildUrl
   }
 
   async doRequest(query: MyQuery) {
     const result = await getBackendSrv().datasourceRequest({
       method: 'GET',
-      url: this.url!,
-      params: query,
+      url: this.urlBuilder(query)
     });
-
     return result;
   }
 
@@ -33,10 +46,15 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     const from = range!.from.valueOf();
     const to = range!.to.valueOf();
 
-    // Return a constant for each query.
-    // TODO: get real lf values via doRequest
     const data = options.targets.map((target) => {
       const query = defaults(target, defaultQuery);
+
+      this.doRequest(query).then((res) => {
+        //TODO: set values from result
+        console.log(res);
+      })
+
+
       const dataFrame: MutableDataFrame = new MutableDataFrame();
       dataFrame.refId = query.refId;
       
@@ -50,7 +68,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   async testDatasource() {
-    // WIP: how to connect to lf via proxy properly?
+    // WIP: test not working properly
     const routePath = "/linkedfactory";
     return getBackendSrv()
       .datasourceRequest({
