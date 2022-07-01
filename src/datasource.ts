@@ -198,7 +198,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     });
     fillPromiseArrayPromise.then((promises) =>{
       if(Array.isArray(promises)){
-        console.log(promises);
+        console.log(promises); // gibt richtiges objekt aus -> "Array"
+
+        // funktioniert nicht
+        promises.forEach(function(){
+          // hier Daten auseinandernehmen, scale einberechnen
+        })
       }
     }).catch((e) =>{
       console.error(e);
