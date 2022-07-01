@@ -14,14 +14,14 @@ export interface MyQuery extends DataQuery {
   factory: String;
   machine: String;
   sensor: String;
+
+  item: String;
+  property: String;
+  scale: number;
 }
 
 export const defaultQuery: Partial<MyQuery> = {
-  constant: 6.5,
-
-  value: 3, 
-  flag: 4, 
-  a: 5
+  
 };
 
 /**
