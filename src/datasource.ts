@@ -3,6 +3,7 @@ import { getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 import {
   DataQueryRequest,
   DataQueryResponse,
+  DataQueryResponseData,
   DataSourceApi,
   DataSourceInstanceSettings
 } from '@grafana/data';
@@ -185,39 +186,19 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     var allPromises: Array<any> = []; 
     var that = this;
 
-    var fillPromiseArrayPromise = new Promise((resolve, reject) => {
       for(let [property, items] of propertiesToItems){
         items.forEach(function(i){
-          that.loadData(i, property, options.range.from.valueOf(), options.range.to.valueOf())
-              .then((res) =>{
-                allPromises.push(res);
-              });
+          property.split(' ').forEach(function(p){
+            allPromises.push(that.loadData(i, p, options.range.from.valueOf(), options.range.to.valueOf()));
+          });
         });
       }
-      resolve(allPromises);
-    });
-    fillPromiseArrayPromise.then((promises) =>{
-      if(Array.isArray(promises)){
-        console.log(promises); // gibt richtiges objekt aus -> "Array"
-
-        // funktioniert nicht
-        promises.forEach(function(){
-          // hier Daten auseinandernehmen, scale einberechnen
-        })
-      }
-    }).catch((e) =>{
-      console.error(e);
-    });
     
-    return this
-        .loadData(itemVal, propertyVal,
-            options.range.from.valueOf(),
-            options.range.to.valueOf())
-        //.then(results => {
-        .then((results) => {
-          //var data = results.map(v => {
-          var data = results!.map((v) => {
-            var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
+    return Promise.all(allPromises).then(function(p){
+      var returnData: DataQueryResponseData[] = [];
+      p.forEach(value =>{
+        var data = value!.map(v =>{
+          var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
             var values = v.values;
 
             // get the config entry to access scale etc.
@@ -237,10 +218,47 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               return [ d.value * scale, d.time ];
             });
             return { target : targetName, datapoints : datapoints };
+        });
+        returnData.push(data[0]);
+        return { data : data };
+      });
+      console.log(returnData);
+      return { data : returnData }  
+    });
+    
+
+    /*    
+    return this
+        .loadData(itemVal, propertyVal,
+            options.range.from.valueOf(),
+            options.range.to.valueOf())
+        //.then(results => {
+        .then((results) => {
+          //var data = results.map(v => {
+          var data = results!.map((v) => {
+            var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
+            var values = v.values;
+
+            // get the config entry to access scale etc.
+            //var target = _.filter(query.targets, target => {
+            var target = _.filter(query.targets, target => {
+              // FIXME: change handling of item/property
+              /*var _item = target.item.split(/[ ]+/)[1];
+              var _property = target.property.split(/[ ]+/)[1];
+              return (v.item === _item && v.property === _property);////
+              return (target)
+            })[0];
+
+            var scale = (target && target.scale ? target.scale : 1);
+
+            //var datapoints = values.map(d => {
+            var datapoints = values.map(d => {
+              return [ d.value * scale, d.time ];
+            });
+            return { target : targetName, datapoints : datapoints };
           });
           return { data : data };
-        });
-
+        });*/
   }
   async testDatasource() {
 
