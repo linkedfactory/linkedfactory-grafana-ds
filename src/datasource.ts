@@ -18,6 +18,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   templateSrv: any;
   maxDataPoints: number;
   buckets: number;
+  returnData: DataQueryResponseData[];
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
     this.url = instanceSettings.jsonData.url;
@@ -27,6 +28,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     this.templateSrv = getTemplateSrv();
     this.maxDataPoints = 10000;
     this.buckets = 2;
+    this.returnData = [];
   }
 
   buildQueryParameters(options) {
@@ -37,14 +39,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       return ((target.item !== 'select item') && (target.property !== 'select property'));
     });
 
-    //var targets = _.map(options.targets, target => {
     var targets = _.map(options.targets, target => {
       return {
         // default fields
         target : this.templateSrv.replace(target.target),
         refId : target.refId,
         hide : target.hide,
-        // LF-specific fields -> URL??
         item : this.url + '/demofactory' + target.item,
         property: target.property,
         scale : target.scale
@@ -138,7 +138,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 		return uriString.substring(uriString.lastIndexOf(separator) + 1);
 	}
 
-    
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
     var self = this;
 
@@ -151,36 +150,21 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       return this.q.when({ data : [] });
     }
 
-    var items: string[] = [];
-    var properties: string[] = [];
-
     var itemProperties = new Map<string, Set<string>>();
+    var itemPropertyToScale = new Map<string, number>();
+
     _.forEach(query.targets, t => {
       itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>()).add(t.property));
+      if(!t.scale) t.scale = 1;
+      itemPropertyToScale.set([t.item, t.property].join(' '), t.scale);
     });
+
+    console.log(itemPropertyToScale);
 
     var propertiesToItems = new Map<string, Set<string>>();
     for (let [item, properties] of itemProperties){
       let propertiesKey = Array.from(properties.values()).sort().join(' ');
       propertiesToItems.set(propertiesKey, (propertiesToItems.get(propertiesKey) || new Set<string>()).add(item));
-    }
-    
-    _.forEach(query.targets, target => {
-      if (target.item && !_.includes(items, target.item)) {
-        items.push(target.item);
-      }
-      if (target.property && !_.includes(properties, target.property)) {
-        properties.push(target.property);
-      }
-    });
-    if (items.length <= 0) {
-      return this.q.when({ data : [] });
-    }
-    var itemVal = items.join(' ');
-    // if not set, keep undefined to load all properties
-    var propertyVal: string = '';
-    if (properties.length > 0) {
-      propertyVal = properties.join(' ');
     }
 
     var allPromises: Array<any> = []; 
@@ -199,66 +183,17 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       p.forEach(value =>{
         var data = value!.map(v =>{
           var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
-            var values = v.values;
-
-            // get the config entry to access scale etc.
-            //var target = _.filter(query.targets, target => {
-            var target = _.filter(query.targets, target => {
-              // FIXME: change handling of item/property
-              /*var _item = target.item.split(/[ ]+/)[1];
-              var _property = target.property.split(/[ ]+/)[1];
-              return (v.item === _item && v.property === _property);*/
-              return (target)
-            })[0];
-
-            var scale = (target && target.scale ? target.scale : 1);
-
-            //var datapoints = values.map(d => {
-            var datapoints = values.map(d => {
-              return [ d.value * scale, d.time ];
+            var scale = itemPropertyToScale.get([v.item, v.property].join(' '));
+            var datapoints = v.values.map(d => {
+              return [ d.value * scale!, d.time ];
             });
             return { target : targetName, datapoints : datapoints };
         });
-        returnData.push(data[0]);
+        if (data[0]) returnData.push(data[0]);
         return { data : data };
       });
-      console.log(returnData);
       return { data : returnData }  
     });
-    
-
-    /*    
-    return this
-        .loadData(itemVal, propertyVal,
-            options.range.from.valueOf(),
-            options.range.to.valueOf())
-        //.then(results => {
-        .then((results) => {
-          //var data = results.map(v => {
-          var data = results!.map((v) => {
-            var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
-            var values = v.values;
-
-            // get the config entry to access scale etc.
-            //var target = _.filter(query.targets, target => {
-            var target = _.filter(query.targets, target => {
-              // FIXME: change handling of item/property
-              /*var _item = target.item.split(/[ ]+/)[1];
-              var _property = target.property.split(/[ ]+/)[1];
-              return (v.item === _item && v.property === _property);////
-              return (target)
-            })[0];
-
-            var scale = (target && target.scale ? target.scale : 1);
-
-            //var datapoints = values.map(d => {
-            var datapoints = values.map(d => {
-              return [ d.value * scale, d.time ];
-            });
-            return { target : targetName, datapoints : datapoints };
-          });
-          return { data : data };
-        });*/
   }
   async testDatasource() {
 
