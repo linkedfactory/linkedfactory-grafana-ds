@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
 import React, { PureComponent } from 'react';
-import { Select, Slider } from '@grafana/ui';
+import { Select, Slider, MultiSelect } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
@@ -68,9 +68,13 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
-  onPropertyChange = (value: SelectableValue<String>) => {
+  onPropertyChange = (value: SelectableValue<string>[]) => {
     const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, property: value.value! });
+    var props: string[] = [];
+    value.forEach(v=>{
+      props.push(v.value!)
+    });
+    onChange({ ...query, property: props });
     onRunQuery();
   }
 
@@ -93,7 +97,7 @@ export class QueryEditor extends PureComponent<Props> {
       <div className="gf-form-inline id=form">
         <div className="gf-form" style={{width: '70%', display: 'flex', alignItems: 'flex-end'}}>
             <Select options={this.myItemOptions} onChange={this.onItemChange} placeholder="Item"></Select>
-            <Select options={this.myPropertyOptions} onChange={this.onPropertyChange} placeholder="Property"></Select>
+            <MultiSelect options={this.myPropertyOptions} onChange={this.onPropertyChange} placeholder="Property"></MultiSelect>
             <Slider 
               step={0.1} 
               value={1} 

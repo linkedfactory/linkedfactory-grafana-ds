@@ -16,7 +16,7 @@ export interface MyQuery extends DataQuery {
   sensor: String;
 
   item: String;
-  property: String;
+  property: string[];
   scale: number;
 }
 

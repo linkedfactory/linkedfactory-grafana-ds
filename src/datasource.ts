@@ -140,7 +140,6 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
     var self = this;
-
     var query = this.buildQueryParameters(options);
 
     //query.targets = query.targets.filter(t => !t.hide);
@@ -154,11 +153,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     var itemPropertyToScale = new Map<string, number>();
 
     _.forEach(query.targets, t => {
-      itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>()).add(t.property));
+      itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>(t.property)));
       if(!t.scale) t.scale = 1;
-      itemPropertyToScale.set([t.item, t.property].join(' '), t.scale);
+      t.property.forEach(p => {
+        itemPropertyToScale.set([t.item, p].join(' '), t.scale);
+      });
     });
 
+    console.log(itemProperties);
     console.log(itemPropertyToScale);
 
     var propertiesToItems = new Map<string, Set<string>>();
