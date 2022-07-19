@@ -7,7 +7,14 @@
    yarn install
    ```
 
-2. Build plugin in development mode or run in watch mode
+2. Get a Grafana API 'PluginPublisher' key and sign plugin
+
+   ```bash
+   export GRAFANA_API_KEY=your_api_key
+   yarn sign --rootUrls http://localhost:3000
+   ```
+
+3. Build plugin in development mode or run in watch mode
 
    ```bash
    yarn dev
@@ -19,13 +26,13 @@
    yarn watch
    ```
 
-3. Build plugin in production mode
+4. Build plugin in production mode
 
    ```bash
    yarn build
    ```
 
-4. Start grafana
+5. Start grafana
 
    ```bash
    sudo docker compose up
