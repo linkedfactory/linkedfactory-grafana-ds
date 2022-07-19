@@ -153,15 +153,14 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     var itemPropertyToScale = new Map<string, number>();
 
     _.forEach(query.targets, t => {
-      itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>(t.property)));
-      if(!t.scale) t.scale = 1;
-      t.property.forEach(p => {
-        itemPropertyToScale.set([t.item, p].join(' '), t.scale);
-      });
+      if(t.property!=undefined){
+        itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>(t.property)));
+        if(!t.scale) t.scale = 1;
+        t.property.forEach(p => {
+          itemPropertyToScale.set([t.item, p].join(' '), t.scale);
+        });
+      }
     });
-
-    console.log(itemProperties);
-    console.log(itemPropertyToScale);
 
     var propertiesToItems = new Map<string, Set<string>>();
     for (let [item, properties] of itemProperties){
