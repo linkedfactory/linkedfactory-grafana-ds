@@ -1,5 +1,5 @@
 {
-  "name": "iwu-grafana-lf-datasource",
+  "name": "grafana-lf-datasource",
   "version": "1.0.0",
   "description": "LinkedFactory Datasource Plugin",
   "scripts": {
@@ -10,7 +10,7 @@
     "sign": "grafana-toolkit plugin:sign",
     "start": "yarn watch"
   },
-  "author": "Lukas Strechel",
+  "author": "Fraunhofer IWU and LinkedFactory Contributors",
   "license": "Apache-2.0",
   "devDependencies": {
     "@grafana/data": "latest",
@@ -24,6 +24,6 @@
     "node": ">=14"
   },
   "dependencies": {
-    "@grafana/runtime": "^8.5.4"
+    "@grafana/runtime": "^9.3.1"
   }
 }

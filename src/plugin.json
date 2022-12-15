@@ -1,13 +1,13 @@
 {
 "type": "datasource",
-  "name": "grafana-lf-datasource",
-  "id": "iwu-grafana-lf-datasource",
+  "name": "LinkedFactory Datasource",
+  "id": "lf-datasource",
   "metrics": true,
   "info": {
     "description": "LinkedFactory Datasource Plugin",
     "author": {
-      "name": "Lukas Strechel",
-      "url": "http://linkedfactory.iwu.fraunhofer.de"
+      "name": "Fraunhofer IWU and LinkedFactory Contributors",
+      "url": "https://linkedfactory.github.io/specification/"
     },
     "keywords": [
       "LinkedFactory"
@@ -19,7 +19,7 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/grafana-starter-datasource"
+        "url": "https://linkedfactory.github.io/specification/"
       },
       {
         "name": "License",
