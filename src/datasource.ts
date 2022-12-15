@@ -39,7 +39,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       return ((target.item !== 'select item') && (target.property !== 'select property'));
     });
 
-    var targets = _.map(options.targets, target => {
+    let targets = _.map(options.targets, target => {
       return {
         // default fields
         target : this.templateSrv.replace(target.target),
@@ -55,9 +55,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   loadData(items, properties, from, to) {
-    var interval = Math.round((to - from) / this.maxDataPoints);
-    var limit = this.maxDataPoints / this.buckets;
-    var self = this;
+    let interval = Math.round((to - from) / this.maxDataPoints);
+    let limit = this.maxDataPoints / this.buckets;
+    let self = this;
 
     return getBackendSrv().datasourceRequest({
           url : this.url + '/values',
@@ -77,8 +77,8 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         //.then(response => {
         .then(response => {
           if (response.status === 200) {
-            //var loadOlderData = false;
-            var promises: Array<any> = [];
+            //let loadOlderData = false;
+            let promises: any[] = [];
             //Object.keys(response.data).forEach(item => {
             if (!response.data) {
               console.log("Oops! No response data?!");
@@ -86,11 +86,11 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
             }
 
             Object.keys(response.data).forEach((item) => {
-              var newItemData = response.data[item];
+              let newItemData = response.data[item];
               //Object.keys(newItemData).forEach(property => {
               Object.keys(newItemData).forEach((property) => {
-                var newPropertyData = newItemData[property];
-                if (!newPropertyData || newPropertyData.length == 0) {
+                let newPropertyData = newItemData[property];
+                if (!newPropertyData || newPropertyData.length === 0) {
                   return;
                 } else {
                   // LF returns data in latest-first order
@@ -98,10 +98,10 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
                   newPropertyData.reverse();
                 }
   
-                if (newPropertyData.length == limit) {
+                if (newPropertyData.length === limit) {
                   // limit reached, fetch earlier blocks, keep from
                   // but stop at earliest time already read - 1
-                  var localTo = newPropertyData[0].time - 1;
+                  let localTo = newPropertyData[0].time - 1;
                   promises.push(
                       self.loadData(item, property, from, localTo)
                         //.then(d => {
@@ -134,13 +134,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
   // helper to get the localPart of an URI (used to display short properties)
 	localPart(uriString) {
-		var separator = (uriString.lastIndexOf('#') > 0 ? '#' : '/');
+		let separator = (uriString.lastIndexOf('#') > 0 ? '#' : '/');
 		return uriString.substring(uriString.lastIndexOf(separator) + 1);
 	}
 
   async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
-    var self = this;
-    var query = this.buildQueryParameters(options);
+    let self = this;
+    let query = this.buildQueryParameters(options);
 
     //query.targets = query.targets.filter(t => !t.hide);
     query.targets = query.targets.filter(t => { return !t.hide; });
@@ -149,27 +149,29 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       return this.q.when({ data : [] });
     }
 
-    var itemProperties = new Map<string, Set<string>>();
-    var itemPropertyToScale = new Map<string, number>();
+    let itemProperties = new Map<string, Set<string>>();
+    let itemPropertyToScale = new Map<string, number>();
 
     _.forEach(query.targets, t => {
-      if(t.property!=undefined){
+      if(t.property !== undefined){
         itemProperties.set(t.item, (itemProperties.get(t.item) || new Set<string>(t.property)));
-        if(!t.scale) t.scale = 1;
+        if(!t.scale) {
+          t.scale = 1;
+        }
         t.property.forEach(p => {
           itemPropertyToScale.set([t.item, p].join(' '), t.scale);
         });
       }
     });
 
-    var propertiesToItems = new Map<string, Set<string>>();
+    let propertiesToItems = new Map<string, Set<string>>();
     for (let [item, properties] of itemProperties){
       let propertiesKey = Array.from(properties.values()).sort().join(' ');
       propertiesToItems.set(propertiesKey, (propertiesToItems.get(propertiesKey) || new Set<string>()).add(item));
     }
 
-    var allPromises: Array<any> = []; 
-    var that = this;
+    let allPromises: any[] = []; 
+    let that = this;
 
       for(let [property, items] of propertiesToItems){
         items.forEach(function(i){
@@ -180,17 +182,19 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       }
     
     return Promise.all(allPromises).then(function(p){
-      var returnData: DataQueryResponseData[] = [];
+      let returnData: DataQueryResponseData[] = [];
       p.forEach(value =>{
-        var data = value!.map(v =>{
-          var targetName = self.prefixName(self.url, "lf:", v.item, v.property);
-            var scale = itemPropertyToScale.get([v.item, v.property].join(' '));
-            var datapoints = v.values.map(d => {
+        let data = value!.map(v =>{
+          let targetName = self.prefixName(self.url, "lf:", v.item, v.property);
+            let scale = itemPropertyToScale.get([v.item, v.property].join(' '));
+            let datapoints = v.values.map(d => {
               return [ d.value * scale!, d.time ];
             });
             return { target : targetName, datapoints : datapoints };
         });
-        if (data[0]) returnData.push(data[0]);
+        if (data[0]) {
+          returnData.push(data[0]);
+        }
         return { data : data };
       });
       return { data : returnData }  
@@ -213,7 +217,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         }
         throw err;
       }).then(r => {
-        if(r.status == 200) {
+        if(r.status === 200) {
           return {status: "success", message: "LinkedFactory Online!", title: "Success"}
         }
       });

@@ -30,7 +30,7 @@ export class QueryEditor extends PureComponent<Props> {
 
   //get all items
   getItems(){
-    var that = this;
+    let that = this;
     const url = this.lfUrl + '/**';
     const promise = getBackendSrv().datasourceRequest({
       method: 'GET',
@@ -40,14 +40,16 @@ export class QueryEditor extends PureComponent<Props> {
       r.data.forEach(e => {
         let el = e['@id'].split(that.lfUrl + '/demofactory')[1];
         let element = {label: el, value: el}
-        if(!that.myItemOptions.includes(element)) that.myItemOptions.push(element);
+        if(!that.myItemOptions.includes(element)) {
+          that.myItemOptions.push(element);
+        }
       });
     });
   }
 
   //get property if item is set
   getProperties(item){
-    var that = this;
+    let that = this;
     const url = this.lfUrl + '/properties?item=' + this.lfUrl + '/demofactory' + item;
     const promise = getBackendSrv().datasourceRequest({
       method: 'GET',
@@ -56,7 +58,9 @@ export class QueryEditor extends PureComponent<Props> {
     promise.then(function(r){
       r.data.forEach(e => {
         let el = {label: e['@id'], value: e['@id']};
-        if(!that.myPropertyOptions.includes(el)) that.myPropertyOptions.push(el);
+        if(!that.myPropertyOptions.includes(el)) {
+          that.myPropertyOptions.push(el);
+        }
       });
     })
   }
@@ -68,9 +72,9 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
-  onPropertyChange = (value: SelectableValue<string>[]) => {
+  onPropertyChange = (value: Array<SelectableValue<string>>) => {
     const { onChange, query, onRunQuery } = this.props;
-    var props: string[] = [];
+    let props: string[] = [];
     value.forEach(v=>{
       props.push(v.value!)
     });
