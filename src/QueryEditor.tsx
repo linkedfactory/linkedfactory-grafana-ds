@@ -20,27 +20,24 @@ export class QueryEditor extends PureComponent<Props> {
   myPropertyOptions: Array<{}> = [];
 
   allOptions: Array<Array<{}>> = [
-    this.myFactoryOptions, 
-    this.myMachineOptions, 
+    this.myFactoryOptions,
+    this.myMachineOptions,
     this.mySensorOptions
   ];
 
-  //TODO: how to get instancesettings from DataSource object?
-  lfUrl = "http://localhost:8080/linkedfactory";
-
   //get all items
-  getItems(){
+  getItems() {
     let that = this;
-    const url = this.lfUrl + '/**';
+    const url = this.props.datasource.url + '/**';
     const promise = getBackendSrv().datasourceRequest({
       method: 'GET',
       url: url
     });
-    promise.then(function(r){
+    promise.then(function (r) {
       r.data.forEach(e => {
-        let el = e['@id'].split(that.lfUrl + '/demofactory')[1];
-        let element = {label: el, value: el}
-        if(!that.myItemOptions.includes(element)) {
+        let el = e['@id'];
+        let element = { label: el, value: el }
+        if (!that.myItemOptions.includes(element)) {
           that.myItemOptions.push(element);
         }
       });
@@ -48,17 +45,17 @@ export class QueryEditor extends PureComponent<Props> {
   }
 
   //get property if item is set
-  getProperties(item){
+  getProperties(item) {
     let that = this;
-    const url = this.lfUrl + '/properties?item=' + this.lfUrl + '/demofactory' + item;
+    const url = this.props.datasource.url + '/properties?item=' + item;
     const promise = getBackendSrv().datasourceRequest({
       method: 'GET',
       url: url
     });
-    promise.then(function(r){
+    promise.then(function (r) {
       r.data.forEach(e => {
-        let el = {label: e['@id'], value: e['@id']};
-        if(!that.myPropertyOptions.includes(el)) {
+        let el = { label: e['@id'], value: e['@id'] };
+        if (!that.myPropertyOptions.includes(el)) {
           that.myPropertyOptions.push(el);
         }
       });
@@ -75,7 +72,7 @@ export class QueryEditor extends PureComponent<Props> {
   onPropertyChange = (value: Array<SelectableValue<string>>) => {
     const { onChange, query, onRunQuery } = this.props;
     let props: string[] = [];
-    value.forEach(v=>{
+    value.forEach(v => {
       props.push(v.value!)
     });
     onChange({ ...query, property: props });
@@ -88,34 +85,34 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
-  shouldComponentUpdate(){
+  shouldComponentUpdate() {
     return false;
   }
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const {} = query;
+    const { } = query;
     this.getItems();
 
     return (
       <div className="gf-form-inline id=form">
-        <div className="gf-form" style={{width: '70%', display: 'flex', alignItems: 'flex-end'}}>
-            <Select options={this.myItemOptions} onChange={this.onItemChange} placeholder="Item"></Select>
-            <MultiSelect options={this.myPropertyOptions} onChange={this.onPropertyChange} placeholder="Property"></MultiSelect>
-            <Slider 
-              step={0.1} 
-              value={1} 
-              min={0.1} 
-              max={10} 
-              marks={{ 
-                      "2" : 2,
-                      "4" : 4,
-                      "6" : 6,
-                      "8" : 8,
-                      "10" : 10
-                    }} 
-              onChange={this.onScaleChange}></Slider>
-          
+        <div className="gf-form" style={{ width: '70%', display: 'flex', alignItems: 'flex-end' }}>
+          <Select options={this.myItemOptions} onChange={this.onItemChange} placeholder="Item"></Select>
+          <MultiSelect options={this.myPropertyOptions} onChange={this.onPropertyChange} placeholder="Property"></MultiSelect>
+          <Slider
+            step={0.1}
+            value={1}
+            min={0.1}
+            max={10}
+            marks={{
+              "2": 2,
+              "4": 4,
+              "6": 6,
+              "8": 8,
+              "10": 10
+            }}
+            onChange={this.onScaleChange}></Slider>
+
         </div>
       </div>
     );
