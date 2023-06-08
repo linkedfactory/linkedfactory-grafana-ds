@@ -10,10 +10,10 @@ import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
-  items : Array<SelectableValue<string>> = [];
-  properties : Array<SelectableValue<string>> = [];
+  items: Array<SelectableValue<string>> = [];
+  properties: Array<SelectableValue<string>> = [];
 
-  constructor(props) {
+  constructor(props: Props | Readonly<Props>) {
     super(props);
     this.getItems();
     if (props.query.item) {
@@ -33,8 +33,8 @@ export class QueryEditor extends PureComponent<Props> {
   // get all items
   getItems() {
     const settings = this.props.datasource.settings;
-    const url = this.props.datasource.url + '/**';
-    const options : BackendSrvRequest = {
+    const url = this.props.datasource.url + '/**?item=';
+    const options: BackendSrvRequest = {
       url: url,
       method: 'GET'
     }
@@ -45,7 +45,7 @@ export class QueryEditor extends PureComponent<Props> {
 
     let self = this;
     return getBackendSrv().fetch<any>(options).subscribe(response => {
-      response.data.forEach(e => {
+      response.data.forEach((e: any) => {
         let el = e['@id'];
         let option = { label: el, value: el };
         if (! self.items.includes(option)) {
@@ -57,10 +57,10 @@ export class QueryEditor extends PureComponent<Props> {
   }
 
   // get properties for a given item
-  getProperties(item) {
+  getProperties(item: string) {
     const settings = this.props.datasource.settings;
     const url = this.props.datasource.url + '/properties?item=' + item;
-    const options : BackendSrvRequest = {
+    const options: BackendSrvRequest = {
       url: url,
       method: 'GET'
     }
@@ -71,7 +71,7 @@ export class QueryEditor extends PureComponent<Props> {
 
     let self = this;
     return getBackendSrv().fetch<any>(options).subscribe(response => {
-      response.data.forEach(e => {
+      response.data.forEach((e: any) => {
         let el = e['@id'];
         let option = { label: el, value: el };
         if (! self.properties.includes(option)) {
@@ -86,7 +86,7 @@ export class QueryEditor extends PureComponent<Props> {
     const { onChange, query, onRunQuery } = this.props;
     onChange({ ...query, item: value.value!.toString() });
     this.properties = [];
-    this.getProperties(value.value);
+    this.getProperties(value.value!.toString());
     onRunQuery();
   }
 

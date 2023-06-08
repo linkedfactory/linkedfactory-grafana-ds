@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { BackendSrvRequest, TemplateSrv, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
+import { BackendSrvRequest, FetchResponse, TemplateSrv, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 import {
   DataQueryRequest,
   DataQueryResponse,
@@ -41,7 +41,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     this.maxDataPoints = 10000;
   }
 
-  loadData(options: DataQueryRequest<MyQuery>, item: string, properties: Array<string>, fromTime: number, toTime: number): Observable<ItemData> {
+  loadData(options: DataQueryRequest<MyQuery>, item: string, properties: string[], fromTime: number, toTime: number): Observable<ItemData> {
     let limit = options.maxDataPoints || this.maxDataPoints;
     // let interval = options.intervalMs
     let self = this;
@@ -97,12 +97,12 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   };
 
   // helper to construct a short display name for item + property
-  compoundName(item, property) {
+  compoundName(item: string, property: string) {
     return item + '@' + this.localPart(property);
   }
 
   // helper to get the localPart of an URI (used to display short properties)
-  localPart(uriString) {
+  localPart(uriString: string) {
     let separator = ['#', '/'].find(sep => uriString.lastIndexOf(sep) > 0);
     return uriString.substring(uriString.lastIndexOf(separator ? separator : ':') + 1);
   }
@@ -169,10 +169,11 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
           };
         }
         throw err;
-      }).then(r => {
+      }).then((r: FetchResponse<any>) => {
         if (r.status === 200) {
           return { status: "success", message: "LinkedFactory enpoint online", title: "Success" }
         }
+        return null;
       });
   }
 }
