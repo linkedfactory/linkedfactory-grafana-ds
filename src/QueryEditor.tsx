@@ -5,66 +5,87 @@ import { Select, Slider, MultiSelect } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
-import { getBackendSrv } from '@grafana/runtime';
-//import { takeRightWhile, values } from 'lodash';
+import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 
 type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
+  items : Array<SelectableValue<string>> = [];
+  properties : Array<SelectableValue<string>> = [];
 
-  myFactoryOptions: Array<{}> = [];
-  myMachineOptions: Array<{}> = [];
-  mySensorOptions: Array<{}> = [];
+  constructor(props) {
+    super(props);
+    this.getItems();
+    if (props.query.item) {
+      const item = props.query.item;
+      this.items.push({ label: item, value: item });
 
-  myItemOptions: Array<{}> = [];
-  myPropertyOptions: Array<{}> = [];
+      const properties = props.query.property;
+      if (properties && properties.length) {
+        this.properties = properties.map(p => {
+          return {label: p, value: p };
+        });
+      }
+      this.getProperties(props.query.item);
+    } 
+  }
 
-  allOptions: Array<Array<{}>> = [
-    this.myFactoryOptions,
-    this.myMachineOptions,
-    this.mySensorOptions
-  ];
-
-  //get all items
+  // get all items
   getItems() {
-    let that = this;
+    const settings = this.props.datasource.settings;
     const url = this.props.datasource.url + '/**';
-    const promise = getBackendSrv().datasourceRequest({
-      method: 'GET',
-      url: url
-    });
-    promise.then(function (r) {
-      r.data.forEach(e => {
+    const options : BackendSrvRequest = {
+      url: url,
+      method: 'GET'
+    }
+
+    if (settings.jsonData.user) {
+      options.headers = { 'Authorization' : 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
+    }
+
+    let self = this;
+    return getBackendSrv().fetch<any>(options).subscribe(response => {
+      response.data.forEach(e => {
         let el = e['@id'];
-        let element = { label: el, value: el }
-        if (!that.myItemOptions.includes(element)) {
-          that.myItemOptions.push(element);
+        let option = { label: el, value: el };
+        if (! self.items.includes(option)) {
+          self.items.push(option);
         }
       });
+      self.forceUpdate();
     });
   }
 
-  //get property if item is set
+  // get properties for a given item
   getProperties(item) {
-    let that = this;
+    const settings = this.props.datasource.settings;
     const url = this.props.datasource.url + '/properties?item=' + item;
-    const promise = getBackendSrv().datasourceRequest({
-      method: 'GET',
-      url: url
-    });
-    promise.then(function (r) {
-      r.data.forEach(e => {
-        let el = { label: e['@id'], value: e['@id'] };
-        if (!that.myPropertyOptions.includes(el)) {
-          that.myPropertyOptions.push(el);
+    const options : BackendSrvRequest = {
+      url: url,
+      method: 'GET'
+    }
+
+    if (settings.jsonData.user) {
+      options.headers = { 'Authorization' : 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
+    }
+
+    let self = this;
+    return getBackendSrv().fetch<any>(options).subscribe(response => {
+      response.data.forEach(e => {
+        let el = e['@id'];
+        let option = { label: el, value: el };
+        if (! self.properties.includes(option)) {
+          self.properties.push(option);
         }
       });
-    })
+      self.forceUpdate();
+    });
   }
 
   onItemChange = (value: SelectableValue<String>) => {
     const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, item: value.value! });
+    onChange({ ...query, item: value.value!.toString() });
+    this.properties = [];
     this.getProperties(value.value);
     onRunQuery();
   }
@@ -85,20 +106,15 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
-  shouldComponentUpdate() {
-    return false;
-  }
-
   render() {
     const query = defaults(this.props.query, defaultQuery);
     const { } = query;
-    this.getItems();
 
     return (
       <div className="gf-form-inline id=form">
         <div className="gf-form" style={{ width: '70%', display: 'flex', alignItems: 'flex-end' }}>
-          <Select options={this.myItemOptions} onChange={this.onItemChange} placeholder="Item"></Select>
-          <MultiSelect options={this.myPropertyOptions} onChange={this.onPropertyChange} placeholder="Property"></MultiSelect>
+          <Select options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item}></Select>
+          <MultiSelect options={this.properties} onChange={this.onPropertyChange} placeholder="Property" value={query.property}></MultiSelect>
           <Slider
             step={0.1}
             value={1}
@@ -112,7 +128,6 @@ export class QueryEditor extends PureComponent<Props> {
               "10": 10
             }}
             onChange={this.onScaleChange}></Slider>
-
         </div>
       </div>
     );

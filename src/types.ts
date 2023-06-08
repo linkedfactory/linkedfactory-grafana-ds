@@ -1,4 +1,5 @@
-import { DataQuery, DataSourceJsonData } from '@grafana/data';
+import { DataSourceJsonData } from '@grafana/data';
+import { DataQuery } from '@grafana/schema';
 
 export interface MyQuery extends DataQuery {
   queryText?: string;
@@ -11,11 +12,7 @@ export interface MyQuery extends DataQuery {
   flagSelect: boolean;
   aSelect: boolean;
 
-  factory: String;
-  machine: String;
-  sensor: String;
-
-  item: String;
+  item: string;
   property: string[];
   scale: number;
 }
@@ -29,6 +26,8 @@ export const defaultQuery: Partial<MyQuery> = {
  */
 export interface MyDataSourceOptions extends DataSourceJsonData {
   url?: string;
+  user?: string;
+  password?: string;
 }
 
 /**
