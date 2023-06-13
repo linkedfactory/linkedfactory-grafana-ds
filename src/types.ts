@@ -1,24 +1,16 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
+export type PropertySpec = string[]
+
 export interface MyQuery extends DataQuery {
-  queryText?: string;
-  constant: number;
-  value: number;
-  flag: number;
-  a: number
-
-  valueSelect: boolean;
-  flagSelect: boolean;
-  aSelect: boolean;
-
   item: string;
-  property: string[];
+  propertyPath: PropertySpec[];
   scale: number;
 }
 
 export const defaultQuery: Partial<MyQuery> = {
-  
+  propertyPath: [[]]
 };
 
 /**

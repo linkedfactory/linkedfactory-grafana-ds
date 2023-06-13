@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
 import React, { PureComponent } from 'react';
-import { Select, Slider, MultiSelect } from '@grafana/ui';
+import { Select, Slider, MultiSelect, Button } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
 import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
@@ -20,14 +20,14 @@ export class QueryEditor extends PureComponent<Props> {
       const item = props.query.item;
       this.items.push({ label: item, value: item });
 
-      const properties = props.query.property;
-      if (properties && properties.length) {
-        this.properties = properties.map(p => {
-          return {label: p, value: p };
+      const propertyPath = props.query.propertyPath;
+      if (propertyPath && propertyPath.length) {
+        this.properties = propertyPath[0].map(p => {
+          return { label: p.toString(), value: p.toString() };
         });
       }
       this.getProperties(props.query.item);
-    } 
+    }
   }
 
   // get all items
@@ -40,7 +40,7 @@ export class QueryEditor extends PureComponent<Props> {
     }
 
     if (settings.jsonData.user) {
-      options.headers = { 'Authorization' : 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
+      options.headers = { 'Authorization': 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
     }
 
     let self = this;
@@ -48,7 +48,7 @@ export class QueryEditor extends PureComponent<Props> {
       response.data.forEach((e: any) => {
         let el = e['@id'];
         let option = { label: el, value: el };
-        if (! self.items.includes(option)) {
+        if (!self.items.includes(option)) {
           self.items.push(option);
         }
       });
@@ -66,7 +66,7 @@ export class QueryEditor extends PureComponent<Props> {
     }
 
     if (settings.jsonData.user) {
-      options.headers = { 'Authorization' : 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
+      options.headers = { 'Authorization': 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
     }
 
     let self = this;
@@ -74,7 +74,7 @@ export class QueryEditor extends PureComponent<Props> {
       response.data.forEach((e: any) => {
         let el = e['@id'];
         let option = { label: el, value: el };
-        if (! self.properties.includes(option)) {
+        if (!self.properties.includes(option)) {
           self.properties.push(option);
         }
       });
@@ -90,14 +90,17 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
-  onPropertyChange = (value: Array<SelectableValue<string>>) => {
-    const { onChange, query, onRunQuery } = this.props;
-    let props: string[] = [];
-    value.forEach(v => {
-      props.push(v.value!)
-    });
-    onChange({ ...query, property: props });
-    onRunQuery();
+  onPropertyChange(index: number) {
+    return (value: Array<SelectableValue<string>>) => {
+      const { onChange, query, onRunQuery } = this.props;
+      let props: string[] = [];
+      value.forEach(v => {
+        props.push(v.value!)
+      });
+      query.propertyPath[index] = props
+      onChange({ ...query });
+      onRunQuery();
+    };
   }
 
   onScaleChange = (value: number) => {
@@ -106,29 +109,32 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   }
 
+  pushPath = () => {
+    const { onChange, query } = this.props;
+    query.propertyPath.push([]);
+    onChange({ ...query });
+  }
+
+  popPath = () => {
+    const { onChange, query } = this.props;
+    query.propertyPath.pop();
+    onChange({ ...query });
+  }
+
   render() {
     const query = defaults(this.props.query, defaultQuery);
     const { } = query;
 
     return (
-      <div className="gf-form-inline id=form">
-        <div className="gf-form" style={{ width: '70%', display: 'flex', alignItems: 'flex-end' }}>
-          <Select options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item}></Select>
-          <MultiSelect options={this.properties} onChange={this.onPropertyChange} placeholder="Property" value={query.property}></MultiSelect>
-          <Slider
-            step={0.1}
-            value={1}
-            min={0.1}
-            max={10}
-            marks={{
-              "2": 2,
-              "4": 4,
-              "6": 6,
-              "8": 8,
-              "10": 10
-            }}
-            onChange={this.onScaleChange}></Slider>
-        </div>
+      <div className="gf-form gf-form--offset-1">
+        <Select className="gf-form-input" options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item}></Select>
+        {query.propertyPath.map((p, pathIndex) => {
+          return <MultiSelect key={pathIndex} className="gf-form-input" options={this.properties} onChange={this.onPropertyChange(pathIndex)}
+            placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
+        })}
+        {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={this.popPath} icon='trash-alt'></Button> : null}
+        <Button className="gf-form-btn" onClick={this.pushPath}>/</Button>
+        <Slider step={0.1} value={1} min={0.1} max={10} marks={{ "2": 2, "4": 4, "6": 6, "8": 8, "10": 10 }} onChange={this.onScaleChange}></Slider>
       </div>
     );
   }

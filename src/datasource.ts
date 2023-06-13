@@ -9,9 +9,9 @@ import {
   MutableDataFrame
 } from '@grafana/data';
 import { EMPTY, merge, from, Observable } from 'rxjs';
-import { map, mergeMap } from 'rxjs/operators';
+import { map, mergeMap, concatMap, reduce } from 'rxjs/operators';
 
-import { MyQuery, MyDataSourceOptions } from './types';
+import { MyQuery, MyDataSourceOptions, PropertySpec } from './types';
 
 interface LFData {
   [key: string]: Record<string, any>
@@ -23,6 +23,7 @@ interface PropertyValue {
 }
 
 interface ItemData {
+  refId: string,
   item: string,
   properties: Record<string, PropertyValue[]>
 }
@@ -31,33 +32,37 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   url?: string;
   settings?: any;
   templateSrv: TemplateSrv;
-  maxDataPoints: number;
+  limitPerRequest: number;
 
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
     this.url = instanceSettings.jsonData.url;
     this.settings = instanceSettings;
     this.templateSrv = getTemplateSrv();
-    this.maxDataPoints = 10000;
+    this.limitPerRequest = 10000;
   }
 
-  loadData(options: DataQueryRequest<MyQuery>, item: string, properties: string[], fromTime: number, toTime: number): Observable<ItemData> {
-    let limit = options.maxDataPoints || this.maxDataPoints;
-    // let interval = options.intervalMs
+  loadData(item: string, propertyPath: PropertySpec[], limit?: number, fromTime?: number, toTime?: number): Observable<ItemData> {
     let self = this;
+    const params: Record<string, any> = {
+      item: item,
+      properties: propertyPath[0].join(' '),
+      limit: limit ? limit : this.limitPerRequest
+      //interval: interval,
+      // FIXME: use setting from config (target.downsampling, maybe?)
+      // op: 'avg'
+    };
+
+    if (fromTime !== undefined) {
+      params["from"] = fromTime;
+    }
+    if (toTime !== undefined) {
+      params["to"] = toTime;
+    }
 
     const requestOptions: BackendSrvRequest = {
       url: this.url + '/values',
-      params: {
-        item: item,
-        properties: properties.join(' '),
-        from: fromTime,
-        to: toTime,
-        limit: limit,
-        //interval: interval,
-        // FIXME: use setting from config (target.downsampling, maybe?)
-       // op: 'avg'
-      },
+      params: params,
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     }
@@ -66,9 +71,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       requestOptions.headers!['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
     }
 
-    return getBackendSrv()
+    let results = getBackendSrv()
       .fetch<LFData>(requestOptions)
-      .pipe(mergeMap((response, index) => {
+      .pipe(concatMap((response, index) => {
         if (response.status === 200) {
           let observables: Array<Observable<ItemData>> = [];
           Object.keys(response.data || {}).forEach(item => {
@@ -82,11 +87,11 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               if (!propertyData || propertyData.length === 0) {
                 return;
               }
-              if (propertyData.length === limit) {
+              if (propertyData.length === self.limitPerRequest) {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
-                observables.push(self.loadData(options, item, [property], fromTime, localTo));
+                observables.push(self.loadData(item, [[property]], limit, fromTime, localTo));
               }
             });
           });
@@ -94,6 +99,37 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
         }
         return EMPTY;
       }));
+
+    if (propertyPath.length > 1) {
+      results = results.pipe(mergeMap((data, index) => {
+        return merge(...propertyPath[1].flatMap(p => {
+          return Object.keys(data.properties).flatMap(property => {
+            let propertyData = data.properties[property];
+            return propertyData.map(d => {
+              if (d.value[p]) {
+                let newProperties: Record<string, PropertyValue[]> = {};
+                newProperties[p] = [{ time: d.time, value: d.value[p] }];
+                return from([{ item: item, properties: newProperties } as ItemData]);
+              } else if (d.value['@id']) {
+                const pathRest = propertyPath.length > 2 ? propertyPath.slice(2) : [];
+                return self.loadData(d.value['@id'], [[p]].concat(pathRest), 1).pipe(map(data => {
+                  Object.entries(data.properties).forEach(([p, v]) => {
+                    if (v.length > 0) {
+                      // use time of source value
+                      v[0].time = d.time;
+                    }
+                  });
+                  return data;
+                }));
+              } else {
+                return EMPTY;
+              }
+            });
+          });
+        }));
+      }));
+    }
+    return results;
   };
 
   // helper to construct a short display name for item + property
@@ -108,50 +144,39 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
   }
 
   override query(options: DataQueryRequest<MyQuery>): Observable<DataQueryResponse> {
-    let targets = options.targets.filter(target => {
-      return target.item !== 'select item' && target.property.find(e => e === 'select property') === undefined;
-    }).filter(t => { return !t.hide; });
+    let targets = options.targets.filter(t => { return !t.hide; });
 
     if (targets.length <= 0) {
       return from([{ data: [] }]);
     }
 
-    let itemProperties = new Map<string, Set<string>>();
-    let itemPropertyToTarget = new Map<string, MyQuery>();
-
-    targets.forEach(t => {
-      if (t.property !== undefined) {
-        let key = t.item.toString()
-        itemProperties.set(key, (itemProperties.get(key) || new Set<string>(t.property)));
-        if (!t.scale) {
-          t.scale = 1;
-        }
-        t.property.forEach(p => {
-          itemPropertyToTarget.set([t.item, p].join(' '), t);
-        });
-      }
+    let that = this;
+    const all = targets.map(t => {
+      return that.loadData(t.item, t.propertyPath, options.maxDataPoints, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
+        reduce((acc, data) => {
+          Object.keys(data.properties).forEach(property => {
+            const properties = acc.properties[property] || [];
+            properties.push(...data.properties[property]);
+            acc.properties[property] = properties;
+          });
+          return acc;
+        }, { item: t.item, refId: t.refId, properties: {} } as ItemData),
+        map(data => {
+          let dataFrames = Object.keys(data.properties).map(property => {
+            let propertyData = data.properties[property];
+            return new MutableDataFrame({
+              refId: data.refId,
+              fields: [
+                { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
+                { name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: propertyData.map(d => d.value) },
+              ]
+            });
+          });
+          return { data: dataFrames };
+        }));
     });
 
-    const all: Array<Observable<ItemData>> = [];
-    let that = this;
-    for (let [item, properties] of itemProperties) {
-      all.push(that.loadData(options, item, Array.from(properties), options.range.from.valueOf(), options.range.to.valueOf()));
-    }
-
-    return merge(...all).pipe(map(data => {
-      let dataFrames = Object.keys(data.properties).map(property => {
-        let propertyData = data.properties[property];
-        let target: MyQuery = itemPropertyToTarget.get([data.item, property].join(' '))!;
-        return new MutableDataFrame({
-          refId: target.refId,
-          fields: [
-            { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
-            { name: this.compoundName(data.item, property), type: FieldType.number, values: propertyData.map(d => d.value) },
-          ]
-        });
-      });
-      return { data: dataFrames }
-    }))
+    return merge(...all);
   }
 
   override async testDatasource() {
