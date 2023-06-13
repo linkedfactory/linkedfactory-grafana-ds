@@ -8,10 +8,10 @@ import {
   FieldType,
   MutableDataFrame
 } from '@grafana/data';
-import { EMPTY, merge, from, Observable } from 'rxjs';
-import { map, mergeMap, concatMap, reduce } from 'rxjs/operators';
+import { EMPTY, concat, merge, from, Observable } from 'rxjs';
+import { map, reduce, mergeMap, toArray } from 'rxjs/operators';
 
-import { MyQuery, MyDataSourceOptions, PropertySpec } from './types';
+import { LFQuery, LFDataSourceOptions, PropertySpec } from './types';
 
 interface LFData {
   [key: string]: Record<string, any>
@@ -28,13 +28,13 @@ interface ItemData {
   properties: Record<string, PropertyValue[]>
 }
 
-export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
+export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   url?: string;
   settings?: any;
   templateSrv: TemplateSrv;
   limitPerRequest: number;
 
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+  constructor(instanceSettings: DataSourceInstanceSettings<LFDataSourceOptions>) {
     super(instanceSettings);
     this.url = instanceSettings.jsonData.url;
     this.settings = instanceSettings;
@@ -73,7 +73,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     let results = getBackendSrv()
       .fetch<LFData>(requestOptions)
-      .pipe(concatMap((response, index) => {
+      .pipe(mergeMap((response, index) => {
         if (response.status === 200) {
           let observables: Array<Observable<ItemData>> = [];
           Object.keys(response.data || {}).forEach(item => {
@@ -102,12 +102,13 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
 
     if (propertyPath.length > 1) {
       results = results.pipe(mergeMap((data, index) => {
-        return merge(...propertyPath[1].flatMap(p => {
+        // use concat here to have stable behavior in case of duplicate timestamps
+        return concat(...propertyPath[1].flatMap(p => {
           return Object.keys(data.properties).flatMap(property => {
-            let propertyData = data.properties[property];
+            const propertyData = data.properties[property];
             return propertyData.map(d => {
               if (d.value[p]) {
-                let newProperties: Record<string, PropertyValue[]> = {};
+                const newProperties: Record<string, PropertyValue[]> = {};
                 newProperties[p] = [{ time: d.time, value: d.value[p] }];
                 return from([{ item: item, properties: newProperties } as ItemData]);
               } else if (d.value['@id']) {
@@ -143,7 +144,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     return uriString.substring(uriString.lastIndexOf(separator ? separator : ':') + 1);
   }
 
-  override query(options: DataQueryRequest<MyQuery>): Observable<DataQueryResponse> {
+  override query(options: DataQueryRequest<LFQuery>): Observable<DataQueryResponse> {
     let targets = options.targets.filter(t => { return !t.hide; });
 
     if (targets.length <= 0) {
@@ -160,31 +161,29 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
             acc.properties[property] = properties;
           });
           return acc;
-        }, { item: t.item, refId: t.refId, properties: {} } as ItemData),
+        }, { item: t.item, properties: {} } as ItemData),
         map(data => {
-          let dataFrames = Object.keys(data.properties).map(property => {
+          return Object.keys(data.properties).map(property => {
             let propertyData = data.properties[property];
             return new MutableDataFrame({
-              refId: data.refId,
+              refId: t.refId,
               fields: [
                 { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
-                { name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: propertyData.map(d => d.value) },
+                { name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: propertyData.map(d => d.value), labels: {} },
               ]
             });
           });
-          return { data: dataFrames };
         }));
     });
 
-    return merge(...all);
+    return merge(...all).pipe(toArray(), map(dataFrames => { return { data: dataFrames.flat() } }));
   }
 
   override async testDatasource() {
-    return getBackendSrv()
-      .datasourceRequest({
-        url: this.url!,
-        method: 'GET',
-      })
+    return getBackendSrv().datasourceRequest({
+      url: this.url!,
+      method: 'GET',
+    })
       .catch((err: any) => {
         if (err.data) {
           const msg = err.data.error?.reason ?? err.data.message ?? 'Unknown Error';

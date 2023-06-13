@@ -3,11 +3,11 @@ import defaults from 'lodash/defaults';
 import React, { PureComponent } from 'react';
 import { Select, Slider, MultiSelect, Button } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
-import { DataSource } from './datasource';
-import { defaultQuery, MyDataSourceOptions, MyQuery } from './types';
+import { DataSource } from './Datasource';
+import { defaultQuery, LFDataSourceOptions, LFQuery } from './types';
 import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
   items: Array<SelectableValue<string>> = [];
@@ -134,7 +134,7 @@ export class QueryEditor extends PureComponent<Props> {
         })}
         {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={this.popPath} icon='trash-alt'></Button> : null}
         <Button className="gf-form-btn" onClick={this.pushPath}>/</Button>
-        <Slider step={0.1} value={1} min={0.1} max={10} marks={{ "2": 2, "4": 4, "6": 6, "8": 8, "10": 10 }} onChange={this.onScaleChange}></Slider>
+        <Slider step={0.1} value={1} min={0.1} max={10} marks={{ "1": 1, "2": 2, "10": 10 }} onChange={this.onScaleChange}></Slider>
       </div>
     );
   }

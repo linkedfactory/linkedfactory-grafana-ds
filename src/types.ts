@@ -3,20 +3,20 @@ import { DataQuery } from '@grafana/schema';
 
 export type PropertySpec = string[]
 
-export interface MyQuery extends DataQuery {
+export interface LFQuery extends DataQuery {
   item: string;
   propertyPath: PropertySpec[];
   scale: number;
 }
 
-export const defaultQuery: Partial<MyQuery> = {
+export const defaultQuery: Partial<LFQuery> = {
   propertyPath: [[]]
 };
 
 /**
  * These are options configured for each DataSource instance
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
+export interface LFDataSourceOptions extends DataSourceJsonData {
   url?: string;
   user?: string;
   password?: string;
@@ -25,6 +25,6 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
 /**
  * Value that is used in the backend, but never sent over HTTP to the frontend
  */
-export interface MySecureJsonData {
+export interface LFSecureJsonData {
   apiKey?: string;
 }
