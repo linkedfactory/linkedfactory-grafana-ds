@@ -46,12 +46,16 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     let self = this;
     const params: Record<string, any> = {
       item: item,
-      properties: propertyPath[0].join(' '),
       limit: limit ? limit : this.limitPerRequest
       //interval: interval,
       // FIXME: use setting from config (target.downsampling, maybe?)
       // op: 'avg'
     };
+
+    const queryProperties = propertyPath[0]
+    if (queryProperties.length && queryProperties[0] !== "*") {
+      params["properties"] = queryProperties.join(' ');
+    }
 
     if (fromTime !== undefined) {
       params["from"] = fromTime;
@@ -142,6 +146,38 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   localPart(uriString: string) {
     let separator = ['#', '/'].find(sep => uriString.lastIndexOf(sep) > 0);
     return uriString.substring(uriString.lastIndexOf(separator ? separator : ':') + 1);
+  }
+
+  // get properties for a given item
+  queryProperties(item: string, propertyPath?: PropertySpec[]): Observable<string[]> {
+    if (propertyPath !== undefined && propertyPath.length) {
+      // fetch properties via example value
+      return this.loadData(item, propertyPath, 1).pipe(map(data => {
+        return Object.keys(data.properties);
+      }));
+    }
+
+    // use /properties endpoint
+    const params: Record<string, any> = {
+      item: item
+    };
+
+    const requestOptions: BackendSrvRequest = {
+      url: this.url + '/properties',
+      params: params,
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    }
+
+    if (this.settings.jsonData.user) {
+      requestOptions.headers!['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
+    }
+
+    return getBackendSrv().fetch<any>(requestOptions).pipe(map(response => {
+      return response.data.map((e: any) => {
+        return e['@id'];
+      });
+    }));
   }
 
   override query(options: DataQueryRequest<LFQuery>): Observable<DataQueryResponse> {
