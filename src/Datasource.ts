@@ -255,7 +255,11 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
             }
           }
 
-          let columnValues = new Array<any[]>(propertyNames.length).fill(new Array<any>(nrOfValues));
+          let columnValues = new Array<any[]>(propertyNames.length);
+          for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
+            columnValues[propertyNr] = new Array<any>(nrOfValues);
+          }
+
           let propertyIndexes = new Array<number>(propertyNames.length).fill(0);
           for (index = 0; index < timeValues.length; index++) {
             const time = timeValues[index];
