@@ -87,9 +87,10 @@ export class QueryEditor extends PureComponent<Props> {
 
   onItemChange = (value: SelectableValue<String>) => {
     const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, item: value.value!.toString() });
+    query.item =  value.value!.toString();
     this.properties = [[]];
     this.loadProperties(0);
+    onChange({ ...query });
     onRunQuery();
   }
 
