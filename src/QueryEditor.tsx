@@ -41,7 +41,7 @@ export class QueryEditor extends PureComponent<Props> {
   // get all items
   loadItems() {
     const settings = this.props.datasource.settings;
-    const url = this.props.datasource.url + '/**?item=';
+    const url = this.props.datasource.url + '/**';
     const options: BackendSrvRequest = {
       url: url,
       method: 'GET'
@@ -133,7 +133,7 @@ export class QueryEditor extends PureComponent<Props> {
 
     return (
       <div className="gf-form gf-form--offset-1">
-        <Select className="gf-form-input" options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item}></Select>
+        <Select className="gf-form-input" options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item} allowCustomValue={true}></Select>
         {query.propertyPath.map((p, pathIndex) => {
           return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
             <MultiSelect key={pathIndex} className="gf-form-input" options={this.properties[pathIndex]} onChange={this.onPropertyChange(pathIndex)}
