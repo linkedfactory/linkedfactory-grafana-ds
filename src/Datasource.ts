@@ -30,6 +30,12 @@ interface ItemData {
   properties: Record<string, PropertyValue[]>
 }
 
+interface QueryOptions {
+  limit?: number;
+  op?: string;
+  interval?: number;
+}
+
 export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   url?: string;
   settings?: any;
@@ -44,14 +50,13 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     this.limitPerRequest = 10000;
   }
 
-  loadData(item: string, propertyPath: PropertySpec[], limit?: number, fromTime?: number, toTime?: number): Observable<ItemData> {
+  loadData(item: string, propertyPath: PropertySpec[], options: QueryOptions, fromTime?: number, toTime?: number): Observable<ItemData> {
     let self = this;
     const params: Record<string, any> = {
       item: item,
-      limit: limit ? limit : this.limitPerRequest
-      //interval: interval,
-      // FIXME: use setting from config (target.downsampling, maybe?)
-      // op: 'avg'
+      limit: options.limit ? options.limit : this.limitPerRequest,
+      op: options.op,
+      interval: options.interval
     };
 
     const queryProperties = propertyPath[0]
@@ -97,7 +102,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
-                observables.push(self.loadData(item, [[property]], limit, fromTime, localTo));
+                observables.push(self.loadData(item, [[property]], { limit : options.limit }, fromTime, localTo));
               }
             });
           });
@@ -119,7 +124,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                 return from([{ item: item, properties: newProperties } as ItemData]);
               } else if (d.value['@id']) {
                 const pathRest = propertyPath.length > 2 ? propertyPath.slice(2) : [];
-                return self.loadData(d.value['@id'], [[p]].concat(pathRest), 1).pipe(map(data => {
+                return self.loadData(d.value['@id'], [[p]].concat(pathRest), { limit : 1 }).pipe(map(data => {
                   Object.entries(data.properties).forEach(([p, v]) => {
                     if (v.length > 0) {
                       // use time of source value
@@ -154,7 +159,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   queryProperties(item: string, propertyPath?: PropertySpec[]): Observable<string[]> {
     if (propertyPath !== undefined && propertyPath.length) {
       // fetch properties via example value
-      return this.loadData(item, propertyPath, 1).pipe(map(data => {
+      return this.loadData(item, propertyPath, { limit: 1 }).pipe(map(data => {
         return Object.keys(data.properties);
       }));
     }
@@ -191,7 +196,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
 
     let that = this;
     const all = targets.map(t => {
-      return that.loadData(t.item, t.propertyPath, options.maxDataPoints, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
+      return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
         reduce((acc, data) => {
           Object.keys(data.properties).forEach(property => {
             const properties = acc.properties[property] || [];
@@ -249,6 +254,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
           let keys = Array.from(maxTimeCount.keys());
           keys.sort();
           let index = 0;
+
           for (const time of keys) {
             for (let count = maxTimeCount.get(time)!; count > 0; count--) {
               timeValues[index++] = time;
@@ -266,7 +272,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
             for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
               const propertyData = propertyValues[propertyNr];
               const propertyIndex = propertyIndexes[propertyNr];
-              if (time === propertyData[propertyIndex].time) {
+              if (propertyData && propertyData[propertyIndex] && time === propertyData[propertyIndex].time) {
                 columnValues[propertyNr][index] = propertyData[propertyIndex].value;
                 propertyIndexes[propertyNr]++;
               }

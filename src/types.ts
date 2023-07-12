@@ -6,6 +6,7 @@ export type PropertySpec = string[]
 export interface LFQuery extends DataQuery {
   item: string;
   propertyPath: PropertySpec[];
+  operator: string;
   scale: number;
 }
 

@@ -1,150 +1,167 @@
 import defaults from 'lodash/defaults';
 
-import React, { PureComponent } from 'react';
-import { Select, Slider, MultiSelect, Button } from '@grafana/ui';
-import { QueryEditorProps, SelectableValue } from '@grafana/data';
+import React, { useState, useEffect } from 'react';
+import { Select, MultiSelect, Button, useStyles2, SegmentSection } from '@grafana/ui';
+import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './Datasource';
 import { defaultQuery, LFDataSourceOptions, LFQuery } from './types';
 import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
+import { css, cx } from '@emotion/css';
+
+import { firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
-export class QueryEditor extends PureComponent<Props> {
-  items: Array<SelectableValue<string>> = [];
-  properties: Array<Array<SelectableValue<string>>>;
+export const QueryEditor = (props: Props): JSX.Element => {
+  function getStyles(theme: GrafanaTheme2) {
+    return {
+      inlineLabel: css`
+        color: ${theme.colors.primary.text};
+      `,
+      sectionContent: cx('gf-form', css`
+        flex: 1 1 auto;
+      `),
+    };
+  }
 
-  constructor(props: Props | Readonly<Props>) {
-    super(props);
-    const propertyPath = props.query.propertyPath;
-    this.properties = Array(propertyPath && propertyPath.length ? propertyPath.length : 1).fill([])
-    this.loadItems();
-    if (props.query.item) {
-      const item = props.query.item;
-      this.items.push({ label: item, value: item });
+  const styles = useStyles2(getStyles);
 
-      if (propertyPath && propertyPath.length) {
-        propertyPath.forEach((value, index) => {
-          this.properties[index] = value.map(p => {
-            return { label: p.toString(), value: p.toString() };
-          });
-        });
+  const { query, datasource } = props;
+  const { propertyPath, item } = query;
+
+  const [items, setItems] = useState([] as Array<SelectableValue<string>>);
+  const [properties, setProperties] = useState([] as Array<Array<SelectableValue<string>>>);
+
+  useEffect(() => {
+    // get all items
+    async function loadItems(): Promise<Array<SelectableValue<string>>> {
+      const settings = datasource.settings;
+      const url = datasource.url + '/**';
+      const options: BackendSrvRequest = {
+        url: url,
+        method: 'GET'
       }
-      this.loadProperties(0);
+
+      if (settings.jsonData.user) {
+        options.headers = { 'Authorization': 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
+      }
+
+      const baseItems = item ? [item] : [];
+      return firstValueFrom(getBackendSrv().fetch<any>(options).pipe(map(response => {
+        return baseItems.concat(response.data.filter((e: any) => e['@id'] !== item).map((e: any) => e['@id'])).map((id: string) => {
+          return { label: id, value: id };
+        });
+      })));
+    }
+
+    loadItems().then(itemOptions => {
+      setItems(itemOptions);
+    })
+  }, [item, datasource]);
+
+  useEffect(() => {
+    // get properties for a given item
+    async function loadProperties(index: number): Promise<Array<SelectableValue<string>>> {
+      const localPropertyPath = index === 0 ? undefined : propertyPath.slice(0, index)
+      if (localPropertyPath) {
+        // signal that we want any property
+        localPropertyPath.push(["*"])
+      }
+      return firstValueFrom(datasource.queryProperties(item, localPropertyPath).pipe(map(properties => {
+        if (propertyPath && index < propertyPath.length) {
+          const pathProperty = propertyPath[index];
+          if (!properties.includes(pathProperty.toString())) {
+            properties.push(pathProperty.toString());
+          }
+        }
+        // sort the properties
+        properties.sort();
+        return properties.map(p => {
+          let option = { label: p, value: p };
+          return option;
+        });
+      })));
+    }
+
+    const promises: Array<Promise<Array<SelectableValue<string>>>> = [];
+    if (item) {
+      promises.push(loadProperties(0));
       if (propertyPath && propertyPath.length) {
         for (let i = 1; i < propertyPath.length; i++) {
-          this.loadProperties(i);
+          promises.push(loadProperties(i));
         }
       }
     }
-  }
-
-  // get all items
-  loadItems() {
-    const settings = this.props.datasource.settings;
-    const url = this.props.datasource.url + '/**';
-    const options: BackendSrvRequest = {
-      url: url,
-      method: 'GET'
-    }
-
-    if (settings.jsonData.user) {
-      options.headers = { 'Authorization': 'Basic ' + btoa(settings.jsonData.user + ":" + settings.jsonData.password) }
-    }
-
-    let self = this;
-    return getBackendSrv().fetch<any>(options).subscribe(response => {
-      response.data.forEach((e: any) => {
-        let el = e['@id'];
-        let option = { label: el, value: el };
-        if (!self.items.includes(option)) {
-          self.items.push(option);
-        }
-      });
-      self.forceUpdate();
+    Promise.all(promises).then(propertyOptions => {
+      setProperties(propertyOptions);
     });
-  }
+  }, [item, propertyPath, datasource]);
 
-  // get properties for a given item
-  loadProperties(index: number) {
-    const self = this;
-    const propertyPath = index === 0 ? undefined : this.props.query.propertyPath.slice(0, index)
-    if (propertyPath) {
-      // signal that we want any property
-      propertyPath.push(["*"])
-    }
-    this.props.datasource.queryProperties(this.props.query.item, propertyPath).subscribe(properties => {
-      // sort the properties first
-      properties.sort();
-      properties.forEach(p => {
-        let option = { label: p, value: p };
-        if (!self.properties[index].includes(option)) {
-          self.properties[index].push(option);
-        }
-      });
-      self.forceUpdate();
-    });
-  }
+  const operators = ["-", "min", "max", "avg", "sum"];
+  const operatorOptions: Array<SelectableValue<string>> = operators.map(o => ({ label: o, value: o }));
 
-  onItemChange = (value: SelectableValue<String>) => {
-    const { onChange, query, onRunQuery } = this.props;
-    query.item =  value.value!.toString();
-    this.properties = [[]];
-    this.loadProperties(0);
+  const onItemChange = (value: SelectableValue<String>) => {
+    const { onChange, query, onRunQuery } = props;
+    query.item = value.value!.toString();
     onChange({ ...query });
     onRunQuery();
   }
 
-  onPropertyChange(index: number) {
+  function onPropertyChange(index: number) {
     return (value: Array<SelectableValue<string>>) => {
-      const { onChange, query, onRunQuery } = this.props;
-      let props: string[] = [];
+      const { onChange, query, onRunQuery } = props;
+      let pathProps: string[] = [];
       value.forEach(v => {
-        props.push(v.value!)
+        pathProps.push(v.value!)
       });
-      query.propertyPath[index] = props
+      query.propertyPath[index] = pathProps;
       onChange({ ...query });
       onRunQuery();
     };
   }
 
-  onScaleChange = (value: number) => {
-    const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, scale: value! });
+  const onOperatorChange = (value: SelectableValue<String>) => {
+    const { onChange, query, onRunQuery } = props;
+    query.operator = value.value!.toString();
+    onChange({ ...query });
     onRunQuery();
   }
 
-  pushPath = () => {
-    const { onChange, query } = this.props;
+  const pushPath = () => {
+    const { onChange, query } = props;
     query.propertyPath.push([]);
-    this.properties.push([]);
-    this.loadProperties(this.properties.length - 1);
     onChange({ ...query });
   }
 
-  popPath = () => {
-    const { onChange, query } = this.props;
+  const popPath = () => {
+    const { onChange, query } = props;
     query.propertyPath.pop();
-    this.properties.pop();
     onChange({ ...query });
   }
 
-  render() {
-    const query = defaults(this.props.query, defaultQuery);
-    const { } = query;
+  const localQuery = defaults(props.query, defaultQuery);
 
-    return (
-      <div className="gf-form gf-form--offset-1">
-        <Select className="gf-form-input" options={this.items} onChange={this.onItemChange} placeholder="Item" value={query.item} allowCustomValue={true}></Select>
-        {query.propertyPath.map((p, pathIndex) => {
-          return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
-            <MultiSelect key={pathIndex} className="gf-form-input" options={this.properties[pathIndex]} onChange={this.onPropertyChange(pathIndex)}
-              placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
-          </>
-        })}
-        {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={this.popPath} icon='trash-alt'></Button> : null}
-        <Button className="gf-form-btn" onClick={this.pushPath}>/</Button>
-        <Slider step={0.1} value={1} min={0.1} max={10} marks={{ "1": 1, "2": 2, "10": 10 }} onChange={this.onScaleChange}></Slider>
-      </div>
-    );
-  }
+  return (
+    <div>
+      <SegmentSection label="Query">
+        <div className={styles.sectionContent}>
+          <Select className="gf-form-input" options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} allowCustomValue={true}></Select>
+          {query.propertyPath.map((p, pathIndex) => {
+            return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
+              <MultiSelect key={pathIndex} className="gf-form-input" options={properties[pathIndex]} onChange={onPropertyChange(pathIndex)}
+                placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
+            </>
+          })}
+          {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt'></Button> : null}
+          <Button className="gf-form-btn" onClick={pushPath}>/</Button>
+        </div>
+      </SegmentSection>
+      <SegmentSection label="Transform">
+        <div className={styles.sectionContent}>
+          <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator}></Select>
+        </div>
+      </SegmentSection>
+    </div>
+  );
 }
