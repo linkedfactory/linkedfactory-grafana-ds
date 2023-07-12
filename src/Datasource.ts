@@ -51,6 +51,8 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   }
 
   loadData(item: string, propertyPath: PropertySpec[], options: QueryOptions, fromTime?: number, toTime?: number): Observable<ItemData> {
+    console.log("load ", item, " ", propertyPath)
+
     let self = this;
     const params: Record<string, any> = {
       item: item,
@@ -102,7 +104,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
-                observables.push(self.loadData(item, [[property]], { limit : options.limit }, fromTime, localTo));
+                observables.push(self.loadData(item, [[property]], { limit: options.limit }, fromTime, localTo));
               }
             });
           });
@@ -119,12 +121,13 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
             const propertyData = data.properties[property];
             return propertyData.map(d => {
               if (d.value[p]) {
+                // TODO unfold property path further if required
                 const newProperties: Record<string, PropertyValue[]> = {};
                 newProperties[p] = [{ time: d.time, value: d.value[p] }];
                 return from([{ item: item, properties: newProperties } as ItemData]);
               } else if (d.value['@id']) {
                 const pathRest = propertyPath.length > 2 ? propertyPath.slice(2) : [];
-                return self.loadData(d.value['@id'], [[p]].concat(pathRest), { limit : 1 }).pipe(map(data => {
+                return self.loadData(d.value['@id'], [[p]].concat(pathRest), { limit: 1 }).pipe(map(data => {
                   Object.entries(data.properties).forEach(([p, v]) => {
                     if (v.length > 0) {
                       // use time of source value
@@ -133,6 +136,12 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                   });
                   return data;
                 }));
+              } else if (p === '*') {
+                const newProperties: Record<string, PropertyValue[]> = {};
+                Object.entries(d.value).forEach(([k, v]) => {
+                  newProperties[k] = [{ time: d.time, value: v }];
+                });
+                return from([{ item: item, properties: newProperties } as ItemData]);
               } else {
                 return EMPTY;
               }

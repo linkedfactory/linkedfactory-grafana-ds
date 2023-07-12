@@ -131,13 +131,13 @@ export const QueryEditor = (props: Props): JSX.Element => {
   const pushPath = () => {
     const { onChange, query } = props;
     query.propertyPath.push([]);
-    onChange({ ...query });
+    onChange({ ...query, propertyPath: query.propertyPath.slice() });
   }
 
   const popPath = () => {
     const { onChange, query } = props;
     query.propertyPath.pop();
-    onChange({ ...query });
+    onChange({ ...query, propertyPath: query.propertyPath.slice() });
   }
 
   const localQuery = defaults(props.query, defaultQuery);
