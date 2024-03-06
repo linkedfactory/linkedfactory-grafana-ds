@@ -8,9 +8,21 @@ export interface LFQuery extends DataQuery {
   propertyPath: PropertySpec[];
   operator: string;
   scale: number;
+  sparql: string;
 }
 
-export const defaultQuery: Partial<LFQuery> = {
+export interface KvinQuery extends LFQuery {
+  item: string;
+  propertyPath: PropertySpec[];
+  operator: string;
+  scale: number;
+}
+ 
+export interface SparqlQuery extends LFQuery {
+  sparql: string;
+}
+
+export const defaultQuery: Partial<KvinQuery> = {
   propertyPath: [[]]
 };
 

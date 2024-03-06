@@ -1,6 +1,6 @@
 import defaults from 'lodash/defaults';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, HTMLAttributes } from 'react';
 import { Select, MultiSelect, Button, useStyles2, SegmentSection } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './Datasource';
@@ -10,6 +10,31 @@ import { css, cx } from '@emotion/css';
 
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+//configuration to accept the webcomponent ontotext-yasgui
+import { defineCustomElements, JSX as LocalJSX } from 'ontotext-yasgui-web-component/loader';
+import 'ontotext-yasgui-web-component';
+
+//configuration for Yasgui library
+import Yasgui from "@triply/yasgui";
+import "@triply/yasgui/build/yasgui.min.css";
+
+//more configuration to accept the webcomponent ontotext-yasgui
+type StencilToReact<T> = {
+  [P in keyof T]?: T[P] & Omit<HTMLAttributes<Element>, 'className'> & {
+    class?: string;
+  };
+};
+
+declare global {
+  export namespace JSX {
+    export interface IntrinsicElements extends StencilToReact<LocalJSX.IntrinsicElements> {
+    }
+  }
+}
+
+React.createElement('ontotext-yasgui', {})
+defineCustomElements(window)
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
@@ -142,26 +167,78 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const localQuery = defaults(props.query, defaultQuery);
 
+  const [queryOption, setQuery] = useState("selectQueryType");
+
+  const [kvinContentVisible, setKvinContentVisible] = useState(false);
+  const [queryContentVisible, setQueryContentVisible] = useState(false);
+
+  useEffect(() => {
+    queryOption === "kvin"
+      ? setKvinContentVisible(true)
+      : setKvinContentVisible(false);
+    queryOption === "query" ? setQueryContentVisible(true) : setQueryContentVisible(false);
+  }, [queryOption]);
+
+  const handleOnChange = (e: any) => {
+    setQuery(e.target.value);
+  };
+
+
+  const Kvin = () => {
+    return (
+      <div>
+        <SegmentSection label="Query">
+          <div className={styles.sectionContent}>
+            <Select className="gf-form-input" options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} allowCustomValue={true}></Select>
+            {query.propertyPath.map((p, pathIndex) => {
+              return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
+                <MultiSelect key={pathIndex} className="gf-form-input" options={properties[pathIndex]} onChange={onPropertyChange(pathIndex)}
+                  placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
+              </>
+            })}
+            {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt'></Button> : null}
+            <Button className="gf-form-btn" onClick={pushPath}>/</Button>
+          </div>
+        </SegmentSection>
+        <SegmentSection label="Transform">
+          <div className={styles.sectionContent}>
+            <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator}></Select>
+          </div>
+        </SegmentSection>
+      </div>
+    );
+  };
+
+  const Query = () => {
+    useEffect(() => {
+      const yasgui = new Yasgui(document.getElementById("yasgui")!, { requestConfig: { endpoint: "http://localhost:8080/sparql?model=http://linkedfactory.github.io/data/" }, copyEndpointOnNewTab: true, });
+     yasgui.getTab()?.setQuery("select * where {...}");
+      return () => { };
+    }, []);
+
+    return (
+      <div id="yasgui">
+
+      </div>  
+    );
+  };
+
+
+
   return (
     <div>
-      <SegmentSection label="Query">
-        <div className={styles.sectionContent}>
-          <Select className="gf-form-input" options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} allowCustomValue={true}></Select>
-          {query.propertyPath.map((p, pathIndex) => {
-            return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
-              <MultiSelect key={pathIndex} className="gf-form-input" options={properties[pathIndex]} onChange={onPropertyChange(pathIndex)}
-                placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
-            </>
-          })}
-          {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt'></Button> : null}
-          <Button className="gf-form-btn" onClick={pushPath}>/</Button>
-        </div>
-      </SegmentSection>
-      <SegmentSection label="Transform">
-        <div className={styles.sectionContent}>
-          <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator}></Select>
-        </div>
-      </SegmentSection>
+      <label>Choose the query option:</label>
+
+      <select name="typeQuery" value={queryOption} onChange={handleOnChange}>
+        <option value="selectQueryType">Select your query option</option>
+        <option value="kvin">Kvin</option>
+        <option value="query">Query</option>
+      </select>
+
+      {kvinContentVisible && <Kvin />}
+      {queryContentVisible && <Query />}
+
+
     </div>
   );
 }
