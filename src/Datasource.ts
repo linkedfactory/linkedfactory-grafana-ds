@@ -10,10 +10,12 @@ import {
   FieldType,
   MutableDataFrame
 } from '@grafana/data';
-import { EMPTY, concat, merge, from, Observable } from 'rxjs';
-import { map, reduce, mergeMap, toArray } from 'rxjs/operators';
+import { EMPTY, concat, merge, from, Observable, firstValueFrom, fromEvent } from 'rxjs';
+import { map, reduce, mergeMap, toArray, concatMap, zipWith, takeUntil } from 'rxjs/operators';
 
 import { LFQuery, LFDataSourceOptions, PropertySpec } from './types';
+
+import { SparqlEndpointFetcher } from "fetch-sparql-endpoint";
 
 interface LFData {
   [key: string]: Record<string, any>
@@ -48,6 +50,73 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     this.settings = instanceSettings;
     this.templateSrv = getTemplateSrv();
     this.limitPerRequest = 10000;
+  }
+
+  executeSparql(sparql: string, refId?: string): Observable<MutableDataFrame> {
+    const fetchFunc = (input: Request | string, init?: RequestInit): Promise<Response> => {
+      let request: Request;
+      if (!(input as any).body) {
+        request = { url: input.toString(), ...init } as Request;
+      } else {
+        request = input as Request;
+      }
+
+      // convert headers to record
+      const headers: Record<string, any> = {};
+      for (const header of request.headers.entries()) {
+        headers[header[0]] = header[1];
+      }
+
+      let requestOptions: BackendSrvRequest = {
+        url: request.url,
+        data: request.body,
+        method: request.method,
+        headers: headers,
+        responseType: 'blob'
+      }
+
+      return firstValueFrom(getBackendSrv().fetch(requestOptions)).then(response => {
+        return {
+          body: (response.data as any | undefined)?.stream(),
+          headers: response.headers,
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText
+        } as Response;
+      });
+    }
+    const fetcher = new SparqlEndpointFetcher({
+      method: 'POST',                           // A custom HTTP method for issuing (non-update) queries, defaults to POST. Update queries are always issued via POST.
+      fetch: fetchFunc,                             // A custom fetch-API-supporting function
+      prefixVariableQuestionMark: false,        // If variable names in bindings should be prefixed with '?', defaults to false
+      timeout: 5000                             // Timeout for setting up server connection (Once a connection has been made, and the response is being parsed, the timeout does not apply anymore).
+    });
+
+    const results = from(fetcher.fetchBindings('https://dbpedia.org/sparql', sparql))
+      .pipe(concatMap(stream => {
+        const end = fromEvent(stream, 'end');
+        return (fromEvent(stream, 'variables') as Observable<any>)
+          .pipe(takeUntil(end), toArray(), zipWith((fromEvent(stream, 'data') as Observable<any>).pipe(takeUntil(end), toArray())));
+      }))
+      .pipe(map(varsAndRows => {
+        // only one element for variables
+        const variables = varsAndRows[0][0];
+        // multiple elements for rows
+        const rows = varsAndRows[1];
+
+        const fields: Array<FieldDTO | Field> = [];
+        // fields.push({ name: 'Time', type: FieldType.time, values: timeValues });
+        for (let v of variables) {
+          const varName: string =  v.value;
+          // TODO convert data
+          fields.push({ name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} });
+        }
+        return new MutableDataFrame({
+          refId: refId,
+          fields: fields
+        });
+      }));
+    return results;
   }
 
   loadData(item: string, propertyPath: PropertySpec[], options: QueryOptions, fromTime?: number, toTime?: number): Observable<ItemData> {
@@ -205,6 +274,9 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
 
     let that = this;
     const all = targets.map(t => {
+      if (t.sparql) {
+        return that.executeSparql(t.sparql, t.refId);
+      }
       return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
         reduce((acc, data) => {
           Object.keys(data.properties).forEach(property => {

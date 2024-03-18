@@ -4,6 +4,7 @@ import { DataQuery } from '@grafana/schema';
 export type PropertySpec = string[]
 
 export interface LFQuery extends DataQuery {
+  type: "kvin" | "sparql";
   item: string;
   propertyPath: PropertySpec[];
   operator: string;
@@ -11,18 +12,8 @@ export interface LFQuery extends DataQuery {
   sparql: string;
 }
 
-export interface KvinQuery extends LFQuery {
-  item: string;
-  propertyPath: PropertySpec[];
-  operator: string;
-  scale: number;
-}
- 
-export interface SparqlQuery extends LFQuery {
-  sparql: string;
-}
-
-export const defaultQuery: Partial<KvinQuery> = {
+export const defaultQuery: Partial<LFQuery> = {
+  type: "kvin",
   propertyPath: [[]]
 };
 

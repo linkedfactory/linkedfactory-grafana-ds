@@ -63,6 +63,7 @@
     "@grafana/runtime": "9.5.2",
     "@grafana/ui": "9.5.2",
     "@triply/yasgui": "^4.2.28",
+    "fetch-sparql-endpoint": "^4.1.1",
     "ng-custom-element": "^2.0.3",
     "tslib": "2.5.0"
   },

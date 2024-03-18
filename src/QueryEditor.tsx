@@ -1,6 +1,6 @@
 import defaults from 'lodash/defaults';
 
-import React, { useState, useEffect, HTMLAttributes } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Select, MultiSelect, Button, useStyles2, SegmentSection } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './Datasource';
@@ -11,30 +11,8 @@ import { css, cx } from '@emotion/css';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-//configuration to accept the webcomponent ontotext-yasgui
-import { defineCustomElements, JSX as LocalJSX } from 'ontotext-yasgui-web-component/loader';
-import 'ontotext-yasgui-web-component';
-
-//configuration for Yasgui library
-import Yasgui from "@triply/yasgui";
+import { default as Yasqe, PartialConfig } from "@triply/yasqe";
 import "@triply/yasgui/build/yasgui.min.css";
-
-//more configuration to accept the webcomponent ontotext-yasgui
-type StencilToReact<T> = {
-  [P in keyof T]?: T[P] & Omit<HTMLAttributes<Element>, 'className'> & {
-    class?: string;
-  };
-};
-
-declare global {
-  export namespace JSX {
-    export interface IntrinsicElements extends StencilToReact<LocalJSX.IntrinsicElements> {
-    }
-  }
-}
-
-React.createElement('ontotext-yasgui', {})
-defineCustomElements(window)
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
@@ -167,22 +145,10 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const localQuery = defaults(props.query, defaultQuery);
 
-  const [queryOption, setQuery] = useState("selectQueryType");
-
-  const [kvinContentVisible, setKvinContentVisible] = useState(false);
-  const [queryContentVisible, setQueryContentVisible] = useState(false);
-
-  useEffect(() => {
-    queryOption === "kvin"
-      ? setKvinContentVisible(true)
-      : setKvinContentVisible(false);
-    queryOption === "query" ? setQueryContentVisible(true) : setQueryContentVisible(false);
-  }, [queryOption]);
-
   const handleOnChange = (e: any) => {
-    setQuery(e.target.value);
+    const { onChange, query } = props;
+    onChange({ ...query, type: e.target.value })
   };
-
 
   const Kvin = () => {
     return (
@@ -209,36 +175,50 @@ export const QueryEditor = (props: Props): JSX.Element => {
     );
   };
 
+  class YasqeCustom extends Yasqe {
+    constructor(parent: HTMLElement, conf: PartialConfig = {}) {
+      super(parent, conf);
+      this.saveQuery = () => {
+        // apply and execute SPARQL query
+        const { onChange, query, onRunQuery } = props;
+        query.sparql = this.getValue();
+        onChange({ ...query });
+        onRunQuery();
+      }
+    }
+  }
+
   const Query = () => {
+    const containerRef = useRef(null);
+
     useEffect(() => {
-      const yasgui = new Yasgui(document.getElementById("yasgui")!, { requestConfig: { endpoint: "http://localhost:8080/sparql?model=http://linkedfactory.github.io/data/" }, copyEndpointOnNewTab: true, });
-     yasgui.getTab()?.setQuery("select * where {...}");
+      const editor = new YasqeCustom(containerRef.current!, {
+        createShareableLink: false,
+        editorHeight: "200",
+        resizeable: false,
+        persistenceId: null
+      });
+      editor.setValue(query.sparql || '');
       return () => { };
     }, []);
 
     return (
-      <div id="yasgui">
-
-      </div>  
+      <div ref={containerRef}></div>
     );
   };
-
-
 
   return (
     <div>
       <label>Choose the query option:</label>
 
-      <select name="typeQuery" value={queryOption} onChange={handleOnChange}>
+      <select name="typeQuery" value={query.type} onChange={handleOnChange}>
         <option value="selectQueryType">Select your query option</option>
         <option value="kvin">Kvin</option>
-        <option value="query">Query</option>
+        <option value="sparql">Query</option>
       </select>
 
-      {kvinContentVisible && <Kvin />}
-      {queryContentVisible && <Query />}
-
-
+      {query.type === "kvin" && <Kvin />}
+      {query.type === "sparql" && <Query />}
     </div>
   );
 }
