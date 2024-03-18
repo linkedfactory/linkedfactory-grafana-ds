@@ -1,5 +1,6 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
+import Parser from "@triply/yasr/build/ts/src/parsers";
 
 export type PropertySpec = string[]
 
@@ -8,7 +9,9 @@ export interface LFQuery extends DataQuery {
   propertyPath: PropertySpec[];
   operator: string;
   scale: number;
-  sparql: string;
+  sparql: Parser.SparqlResults;
+  yasguiUI: boolean;
+  table: Array<Object>;
 }
 
 export interface KvinQuery extends LFQuery {
@@ -19,7 +22,9 @@ export interface KvinQuery extends LFQuery {
 }
  
 export interface SparqlQuery extends LFQuery {
-  sparql: string;
+  sparql: Parser.SparqlResults;
+  yasguiUI: boolean;
+  table: Array<Object>;
 }
 
 export const defaultQuery: Partial<KvinQuery> = {

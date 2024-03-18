@@ -204,104 +204,134 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     }
 
     let that = this;
-    const all = targets.map(t => {
-      return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
-        reduce((acc, data) => {
-          Object.keys(data.properties).forEach(property => {
-            const properties = acc.properties[property] || [];
-            properties.push(...data.properties[property]);
-            acc.properties[property] = properties;
-          });
-          return acc;
-        }, { item: t.item, properties: {} } as ItemData),
-        map(data => {
-          const propertyNames = Object.keys(data.properties);
-          if (propertyNames.length === 1) {
-            // the simple case, just return one column
-            return propertyNames.map(property => {
-              let propertyData = data.properties[property];
-              return new MutableDataFrame({
-                refId: t.refId,
-                fields: [
-                  { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
-                  { name: this.compoundName(data.item, property), values: propertyData.map(d => d.value), labels: {} },
-                ]
+    const all = targets.map(t => { 
+        return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
+          reduce((acc, data) => {
+            Object.keys(data.properties).forEach(property => {
+              const properties = acc.properties[property] || [];
+              properties.push(...data.properties[property]);
+              acc.properties[property] = properties;
+            });
+            return acc;
+          }, { item: t.item, properties: {} } as ItemData),
+          map(data => {
+            const propertyNames = Object.keys(data.properties);
+            if (propertyNames.length === 1) {
+              // the simple case, just return one column
+              return propertyNames.map(property => {
+                let propertyData = data.properties[property];
+                return new MutableDataFrame({
+                  refId: t.refId,
+                  fields: [
+                    { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
+                    { name: this.compoundName(data.item, property), values: propertyData.map(d => d.value), labels: {} },
+                  ]
+                });
               });
-            });
-          }
+            }
 
-          // combine all columns into one data frame
-          const propertyValues = new Array<PropertyValue[]>(propertyNames.length);
-          const maxTimeCount = new Map<number, number>();
-          propertyNames.map((property, propertyIndex) => {
-            let propertyData = data.properties[property];
-            // sort data
-            propertyData.sort((a, b) => a.time - b.time);
-            propertyValues[propertyIndex] = propertyData;
+            // combine all columns into one data frame
+            const propertyValues = new Array<PropertyValue[]>(propertyNames.length);
+            const maxTimeCount = new Map<number, number>();
+            propertyNames.map((property, propertyIndex) => {
+              let propertyData = data.properties[property];
+              // sort data
+              propertyData.sort((a, b) => a.time - b.time);
+              propertyValues[propertyIndex] = propertyData;
 
-            let lastTime: number | undefined = undefined;
-            let count = 0;
-            propertyData.forEach(d => {
-              if (lastTime === d.time) {
-                count++;
-              } else if (lastTime !== undefined) {
+              let lastTime: number | undefined = undefined;
+              let count = 0;
+              propertyData.forEach(d => {
+                if (lastTime === d.time) {
+                  count++;
+                } else if (lastTime !== undefined) {
+                  maxTimeCount.set(lastTime!, Math.max(maxTimeCount.get(lastTime!) || 0, count + 1));
+                  count = 0;
+                }
+                lastTime = d.time;
+              });
+              // set count for last element
+              if (lastTime !== undefined) {
                 maxTimeCount.set(lastTime!, Math.max(maxTimeCount.get(lastTime!) || 0, count + 1));
-                count = 0;
               }
-              lastTime = d.time;
             });
-            // set count for last element
-            if (lastTime !== undefined) {
-              maxTimeCount.set(lastTime!, Math.max(maxTimeCount.get(lastTime!) || 0, count + 1));
+            let nrOfValues = 0
+            for (const count of maxTimeCount.values()) {
+              nrOfValues += count
             }
-          });
-          let nrOfValues = 0
-          for (const count of maxTimeCount.values()) {
-            nrOfValues += count
-          }
-          let timeValues = new Array<number>(nrOfValues);
-          let keys = Array.from(maxTimeCount.keys());
-          keys.sort();
-          let index = 0;
+            let timeValues = new Array<number>(nrOfValues);
+            let keys = Array.from(maxTimeCount.keys());
+            keys.sort();
+            let index = 0;
 
-          for (const time of keys) {
-            for (let count = maxTimeCount.get(time)!; count > 0; count--) {
-              timeValues[index++] = time;
-            }
-          }
-
-          let columnValues = new Array<any[]>(propertyNames.length);
-          for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
-            columnValues[propertyNr] = new Array<any>(nrOfValues);
-          }
-
-          let propertyIndexes = new Array<number>(propertyNames.length).fill(0);
-          for (index = 0; index < timeValues.length; index++) {
-            const time = timeValues[index];
-            for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
-              const propertyData = propertyValues[propertyNr];
-              const propertyIndex = propertyIndexes[propertyNr];
-              if (propertyData && propertyData[propertyIndex] && time === propertyData[propertyIndex].time) {
-                columnValues[propertyNr][index] = propertyData[propertyIndex].value;
-                propertyIndexes[propertyNr]++;
+            for (const time of keys) {
+              for (let count = maxTimeCount.get(time)!; count > 0; count--) {
+                timeValues[index++] = time;
               }
             }
-          }
 
-          const fields: Array<FieldDTO | Field> = [];
-          fields.push({ name: 'Time', type: FieldType.time, values: timeValues });
-          for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
-            const property = propertyNames[propertyNr];
-            fields.push({ name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: columnValues[propertyNr], labels: {} });
-          }
-          return new MutableDataFrame({
-            refId: t.refId,
-            fields: fields
-          });
-        }));
+            let columnValues = new Array<any[]>(propertyNames.length);
+            for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
+              columnValues[propertyNr] = new Array<any>(nrOfValues);
+            }
+
+            let propertyIndexes = new Array<number>(propertyNames.length).fill(0);
+            for (index = 0; index < timeValues.length; index++) {
+              const time = timeValues[index];
+              for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
+                const propertyData = propertyValues[propertyNr];
+                const propertyIndex = propertyIndexes[propertyNr];
+                if (propertyData && propertyData[propertyIndex] && time === propertyData[propertyIndex].time) {
+                  columnValues[propertyNr][index] = propertyData[propertyIndex].value;
+                  propertyIndexes[propertyNr]++;
+                }
+              }
+            }
+
+            const fields: Array<FieldDTO | Field> = [];
+            fields.push({ name: 'Time', type: FieldType.time, values: timeValues });
+            for (let propertyNr = 0; propertyNr < propertyNames.length; propertyNr++) {
+              const property = propertyNames[propertyNr];
+              fields.push({ name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: columnValues[propertyNr], labels: {} });
+            }
+            return new MutableDataFrame({
+              refId: t.refId,
+              fields: fields
+            });
+          }));
     });
 
-    return merge(...all).pipe(toArray(), map(dataFrames => { return { data: dataFrames.flat() } }));
+    if (!targets.at(0)?.yasguiUI) {
+      console.log("inside kvin");
+      return merge(...all).pipe(toArray(), map(dataFrames => { return { data: dataFrames.flat() } }));
+    }
+    else {
+      console.log("inside yasgui");
+      const fields: Array<FieldDTO | Field> = [];
+      const sparqlResult = targets.at(0)?.sparql;
+      const len = sparqlResult!.head.vars.length;
+      for (let i=0; i <len; i++){
+        let values = [];
+        for (let j=0; j < sparqlResult!.results!.bindings.length; j++){
+          values.push(Object.entries(sparqlResult!.results!.bindings[j])[i][1].value);
+        }
+        fields.push({ name: sparqlResult!.head.vars[i], type: FieldType.string, values: values});
+        fields.concat()
+      }
+
+      let muttable= new MutableDataFrame({
+        refId: targets.at(0)?.refId,
+        fields: fields
+      });
+      let arraymut: Array<MutableDataFrame> = [];  
+      arraymut.push(muttable);
+      let result: Array<Observable<DataQueryResponse>> = [];
+      const tablenew: DataQueryResponse = {
+        data : arraymut
+      }
+      result.push(from([tablenew as DataQueryResponse]));
+      return merge(...result) ;
+    }
   }
 
   override async testDatasource() {

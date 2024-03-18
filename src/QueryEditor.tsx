@@ -1,6 +1,6 @@
 import defaults from 'lodash/defaults';
 
-import React, { useState, useEffect, HTMLAttributes } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Select, MultiSelect, Button, useStyles2, SegmentSection } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './Datasource';
@@ -11,30 +11,11 @@ import { css, cx } from '@emotion/css';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-//configuration to accept the webcomponent ontotext-yasgui
-import { defineCustomElements, JSX as LocalJSX } from 'ontotext-yasgui-web-component/loader';
-import 'ontotext-yasgui-web-component';
-
 //configuration for Yasgui library
 import Yasgui from "@triply/yasgui";
+import Parser from "@triply/yasr/build/ts/src/parsers";
+import Tab from "@triply/yasgui/build/ts/src/Tab";
 import "@triply/yasgui/build/yasgui.min.css";
-
-//more configuration to accept the webcomponent ontotext-yasgui
-type StencilToReact<T> = {
-  [P in keyof T]?: T[P] & Omit<HTMLAttributes<Element>, 'className'> & {
-    class?: string;
-  };
-};
-
-declare global {
-  export namespace JSX {
-    export interface IntrinsicElements extends StencilToReact<LocalJSX.IntrinsicElements> {
-    }
-  }
-}
-
-React.createElement('ontotext-yasgui', {})
-defineCustomElements(window)
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
@@ -128,6 +109,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const onItemChange = (value: SelectableValue<String>) => {
     const { onChange, query, onRunQuery } = props;
+    query.yasguiUI = false;
     query.item = value.value!.toString();
     onChange({ ...query });
     onRunQuery();
@@ -181,8 +163,15 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const handleOnChange = (e: any) => {
     setQuery(e.target.value);
-  };
+  }; 
 
+  function yasguiChange(value: Parser.SparqlResults) {
+      const { onChange, query ,onRunQuery} = props;
+      query.yasguiUI = true ;
+      query.sparql = value ;
+      onChange({ ...query });
+      onRunQuery();
+  }
 
   const Kvin = () => {
     return (
@@ -212,18 +201,18 @@ export const QueryEditor = (props: Props): JSX.Element => {
   const Query = () => {
     useEffect(() => {
       const yasgui = new Yasgui(document.getElementById("yasgui")!, { requestConfig: { endpoint: "http://localhost:8080/sparql?model=http://linkedfactory.github.io/data/" }, copyEndpointOnNewTab: true, });
-     yasgui.getTab()?.setQuery("select * where {...}");
-      return () => { };
+      yasgui.on("queryResponse", (instance: Yasgui, tab: Tab) => {
+        yasguiChange(yasgui.getTab()?.getYasr().results?.getAsJson() as Parser.SparqlResults);
+      })
+      return () => {     
+    };
     }, []);
 
     return (
       <div id="yasgui">
-
       </div>  
     );
   };
-
-
 
   return (
     <div>
