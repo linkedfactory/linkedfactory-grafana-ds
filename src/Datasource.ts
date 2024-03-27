@@ -52,8 +52,21 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     this.limitPerRequest = 10000;
   }
 
-  executeSparql(sparql: string, refId?: string): Observable<MutableDataFrame> {
-    const fetchFunc = (input: Request | string, init?: RequestInit): Promise<Response> => {
+  executeSparql(sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<MutableDataFrame> {
+    const fromTime = options.startTime.valueOf();
+    const toTime = options.endTime?.valueOf();
+
+    if (fromTime !== undefined) {
+      sparql = sparql.replace(/[?$]_from/g, fromTime.toString());
+    }
+
+    if (toTime !== undefined) {
+      sparql = sparql.replace(/[?$]_to/g, toTime.toString());
+    }
+
+    console.log("final query", sparql);
+
+    const fetchFunc = async (input: Request | string, init?: RequestInit): Promise<Response> => {
       let request: Request;
       if (!(input as any).body) {
         request = { url: input.toString(), ...init } as Request;
@@ -75,15 +88,14 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         responseType: 'blob'
       }
 
-      return firstValueFrom(getBackendSrv().fetch(requestOptions)).then(response => {
-        return {
-          body: (response.data as any | undefined)?.stream(),
-          headers: response.headers,
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText
-        } as Response;
-      });
+      const response = await firstValueFrom(getBackendSrv().fetch(requestOptions));
+      return {
+        body: (response.data as any | undefined)?.stream(),
+        headers: response.headers,
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      } as Response;
     }
     const fetcher = new SparqlEndpointFetcher({
       method: 'POST',                           // A custom HTTP method for issuing (non-update) queries, defaults to POST. Update queries are always issued via POST.
@@ -105,11 +117,14 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         const rows = varsAndRows[1];
 
         const fields: Array<FieldDTO | Field> = [];
-        // fields.push({ name: 'Time', type: FieldType.time, values: timeValues });
         for (let v of variables) {
           const varName: string =  v.value;
-          // TODO convert data
-          fields.push({ name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} });
+          const field: FieldDTO<any> = { name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} };
+          // if variable is named 'time' then interpret as time field
+          if (varName === 'time') {
+            field.type = FieldType.time;
+          }
+          fields.push(field);
         }
         return new MutableDataFrame({
           refId: refId,
@@ -275,7 +290,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     let that = this;
     const all = targets.map(t => {
       if (t.sparql) {
-        return that.executeSparql(t.sparql, t.refId);
+        return that.executeSparql(t.sparql, t.refId, options);
       }
       return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
         reduce((acc, data) => {

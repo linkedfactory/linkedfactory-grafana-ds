@@ -8,8 +8,8 @@ import { defaultQuery, LFDataSourceOptions, LFQuery } from './types';
 import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 import { css, cx } from '@emotion/css';
 
-import { firstValueFrom } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { firstValueFrom, EMPTY } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 import { default as Yasqe, PartialConfig } from "@triply/yasqe";
 import "@triply/yasgui/build/yasgui.min.css";
@@ -40,7 +40,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
     // get all items
     async function loadItems(): Promise<Array<SelectableValue<string>>> {
       const settings = datasource.settings;
-      const url = datasource.url + '/**';
+      const url = datasource.url!.replace(/\/?$/, '/**');
       const options: BackendSrvRequest = {
         url: url,
         method: 'GET'
@@ -55,11 +55,14 @@ export const QueryEditor = (props: Props): JSX.Element => {
         return baseItems.concat(response.data.filter((e: any) => e['@id'] !== item).map((e: any) => e['@id'])).map((id: string) => {
           return { label: id, value: id };
         });
-      })));
+      }),
+        catchError((e, caught) => EMPTY)));
     }
 
     loadItems().then(itemOptions => {
       setItems(itemOptions);
+    }).catch(e => {
+      // ignore errors fetching the items
     })
   }, [item, datasource]);
 
@@ -190,7 +193,6 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const Query = () => {
     const containerRef = useRef(null);
-
     useEffect(() => {
       const editor = new YasqeCustom(containerRef.current!, {
         createShareableLink: false,
