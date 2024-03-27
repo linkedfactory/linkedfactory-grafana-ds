@@ -13,6 +13,7 @@ import { map, catchError } from 'rxjs/operators';
 
 import { default as Yasqe, PartialConfig } from "@triply/yasqe";
 import "@triply/yasgui/build/yasgui.min.css";
+import "codemirror/theme/dracula.css";
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
@@ -200,6 +201,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
         resizeable: false,
         persistenceId: null
       });
+      (editor as any).setOption('theme', 'dracula');
       editor.setValue(query.sparql || '');
       return () => { };
     }, []);
