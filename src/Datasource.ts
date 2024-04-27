@@ -104,7 +104,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       timeout: 5000                             // Timeout for setting up server connection (Once a connection has been made, and the response is being parsed, the timeout does not apply anymore).
     });
 
-    const results = from(fetcher.fetchBindings('https://dbpedia.org/sparql', sparql))
+    const results = from(fetcher.fetchBindings(this.url!.substring(0,this.url!.length-13) + "sparql?model=http://linkedfactory.github.io/data/", sparql))
       .pipe(concatMap(stream => {
         const end = fromEvent(stream, 'end');
         return (fromEvent(stream, 'variables') as Observable<any>)
@@ -119,11 +119,15 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         const fields: Array<FieldDTO | Field> = [];
         for (let v of variables) {
           const varName: string =  v.value;
-          const field: FieldDTO<any> = { name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} };
-          // if variable is named 'time' then interpret as time field
-          if (varName === 'time') {
-            field.type = FieldType.time;
-          }
+          let field: FieldDTO<any> = {name: varName};
+          // if variable is named 'time' or 'Time' the values need to be converted into Number, otherwise Grafana identify as NaN
+          if (varName === 'time' || varName === 'Time') {
+            field = { name: varName, /*type: FieldType.number,*/  values: rows.map(row => Number(row[varName].value)), labels: {} };
+            }
+            else
+            {
+            field = { name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} };
+            }
           fields.push(field);
         }
         return new MutableDataFrame({
