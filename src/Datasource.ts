@@ -53,16 +53,11 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   }
 
   executeSparql(sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<MutableDataFrame> {
-    const fromTime = options.startTime.valueOf();
-    const toTime = options.endTime?.valueOf();
+    const fromTime = options.range.from.valueOf();
+    const toTime = options.range.to.valueOf();
 
-    if (fromTime !== undefined) {
-      sparql = sparql.replace(/[?$]_from/g, fromTime.toString());
-    }
-
-    if (toTime !== undefined) {
-      sparql = sparql.replace(/[?$]_to/g, toTime.toString());
-    }
+    sparql = sparql.replace(/[?$]_from/g, fromTime.toString());
+    sparql = sparql.replace(/[?$]_to/g, toTime.toString());
 
     console.log("final query", sparql);
 
@@ -104,7 +99,8 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       timeout: 5000                             // Timeout for setting up server connection (Once a connection has been made, and the response is being parsed, the timeout does not apply anymore).
     });
 
-    const results = from(fetcher.fetchBindings(this.url!.substring(0,this.url!.length-13) + "sparql?model=http://linkedfactory.github.io/data/", sparql))
+    const endpoint = this.url!.replace(/linkedfactory\//, "sparql");
+    const results = from(fetcher.fetchBindings(endpoint + "?model=http://linkedfactory.github.io/data/", sparql))
       .pipe(concatMap(stream => {
         const end = fromEvent(stream, 'end');
         return (fromEvent(stream, 'variables') as Observable<any>)
@@ -118,16 +114,21 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
 
         const fields: Array<FieldDTO | Field> = [];
         for (let v of variables) {
-          const varName: string =  v.value;
-          let field: FieldDTO<any> = {name: varName};
+          const varName: string = v.value;
+          let field: FieldDTO<any>;
           // if variable is named 'time' or 'Time' the values need to be converted into Number, otherwise Grafana identify as NaN
           if (varName === 'time' || varName === 'Time') {
-            field = { name: varName, /*type: FieldType.number,*/  values: rows.map(row => Number(row[varName].value)), labels: {} };
-            }
-            else
-            {
-            field = { name: varName, /*type: FieldType.number,*/ values: rows.map(row => row[varName].value), labels: {} };
-            }
+            field = { name: varName, type: FieldType.time, values: rows.map(row => Number(row[varName].value)), labels: {} };
+          } else {
+            field = {
+              name: varName, /*type: FieldType.number,*/ values: rows.map(row => {
+                // try to convert value to number
+                const value = row[varName].value;
+                const valueAsNumber = Number(value);
+                return Number.isNaN(valueAsNumber) ? value : valueAsNumber;
+              }), labels: {}
+            };
+          }
           fields.push(field);
         }
         return new MutableDataFrame({
@@ -142,9 +143,10 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     console.log("load ", item, " ", propertyPath)
 
     let self = this;
+    const limit = options.limit || this.limitPerRequest;
     const params: Record<string, any> = {
       item: item,
-      limit: options.limit ? options.limit : this.limitPerRequest,
+      limit: limit,
       op: options.op,
       interval: options.interval
     };
@@ -188,7 +190,8 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
               if (!propertyData || propertyData.length === 0) {
                 return;
               }
-              if (propertyData.length === self.limitPerRequest) {
+              if (false && propertyData.length === limit) {
+                console.log(propertyData)
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
@@ -296,7 +299,11 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       if (t.sparql) {
         return that.executeSparql(t.sparql, t.refId, options);
       }
-      return that.loadData(t.item, t.propertyPath, { limit: options.maxDataPoints }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
+      return that.loadData(t.item, t.propertyPath, {
+        limit: options.maxDataPoints,
+        interval: t.operator ? options.intervalMs : undefined,
+        op: t.operator
+      }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
         reduce((acc, data) => {
           Object.keys(data.properties).forEach(property => {
             const properties = acc.properties[property] || [];

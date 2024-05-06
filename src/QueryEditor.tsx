@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Select, MultiSelect, Button, useStyles2, SegmentSection } from '@grafana/ui';
+import { Select, MultiSelect, Button, useStyles2, SegmentSection, RadioButtonGroup, Label } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './Datasource';
 import { defaultQuery, LFDataSourceOptions, LFQuery } from './types';
@@ -149,9 +149,9 @@ export const QueryEditor = (props: Props): JSX.Element => {
 
   const localQuery = defaults(props.query, defaultQuery);
 
-  const handleOnChange = (e: any) => {
+  const handleQueryTypeChange = (value: string) => {
     const { onChange, query } = props;
-    onChange({ ...query, type: e.target.value })
+    onChange({ ...query, type: value as any })
   };
 
   const Kvin = () => {
@@ -206,25 +206,30 @@ export const QueryEditor = (props: Props): JSX.Element => {
       return () => { };
     }, []);
 
-    const sparqlEndpoint = "Sparql endpoint: " +`${datasource.url}`.substring(0,`${datasource.url}`.length-13) + "sparql?model=http://linkedfactory.github.io/data/";
+    const sparqlEndpoint = `${datasource.url}`.replace(/linkedfactory\//, "sparql") + "?model=http://linkedfactory.github.io/data/";
 
     return (
       <div>
-        <label> {sparqlEndpoint}</label>
+        <SegmentSection label="Endpoint">
+          <Label>{sparqlEndpoint}</Label>
+        </SegmentSection>
         <div ref={containerRef}></div>
       </div>
     );
   };
 
+  const options = [
+    { label: 'KVIN', value: 'kvin' },
+    { label: 'SPARQL', value: 'sparql' }
+  ];
+
   return (
     <div>
-      <label>Choose the query option:</label>
-
-      <select name="typeQuery" value={query.type} onChange={handleOnChange}>
-        <option value="selectQueryType">Select your query option</option>
-        <option value="kvin">Kvin</option>
-        <option value="sparql">Query</option>
-      </select>
+      <SegmentSection label="Type">
+        <div className={styles.sectionContent}>
+          <RadioButtonGroup options={options} value={query.type} onChange={handleQueryTypeChange} />
+        </div>
+      </SegmentSection>
 
       {query.type === "kvin" && <Kvin />}
       {query.type === "sparql" && <Query />}
