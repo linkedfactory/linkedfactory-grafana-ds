@@ -190,8 +190,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
               if (!propertyData || propertyData.length === 0) {
                 return;
               }
-              if (false && propertyData.length === limit) {
-                console.log(propertyData)
+              if (propertyData.length === limit) {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
