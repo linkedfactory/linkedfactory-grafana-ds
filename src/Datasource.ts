@@ -59,6 +59,29 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     sparql = sparql.replace(/[?$]_from/g, fromTime.toString());
     sparql = sparql.replace(/[?$]_to/g, toTime.toString());
 
+    //get all variables of the grafana dahsboard
+    const variablesProtected = this.templateSrv.getVariables();
+    let variables: any = {};
+
+    if (variablesProtected != null)
+      {
+        for (let i = 0; i < variablesProtected.length; i++) {
+          let data =JSON.parse(JSON.stringify(variablesProtected.at(i)));
+          variables[data.id] = (data.query === undefined)? data.current.value.at(0) : data.query;
+        }
+      }
+    
+    //get all variables with the format $name in the query
+    let varsDynamicQuery = sparql.match(/\$[^\s]+/g)
+        
+    if (varsDynamicQuery != null)
+      {
+        for (let i = 0; i < varsDynamicQuery.length; i++) {
+          let regex = new RegExp("\\" + varsDynamicQuery.at(i) , "g");
+          sparql = sparql.replace(regex, variables[varsDynamicQuery.at(i)!.substring(1)]);
+        }
+      }
+
     console.log("final query", sparql);
 
     const fetchFunc = async (input: Request | string, init?: RequestInit): Promise<Response> => {
@@ -99,7 +122,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       timeout: 5000                             // Timeout for setting up server connection (Once a connection has been made, and the response is being parsed, the timeout does not apply anymore).
     });
 
-    const endpoint = this.url!.replace(/linkedfactory\//, "sparql");
+    const endpoint = this.url!.replace("linkedfactory", "sparql");
     const results = from(fetcher.fetchBindings(endpoint + "?model=http://linkedfactory.github.io/data/", sparql))
       .pipe(concatMap(stream => {
         const end = fromEvent(stream, 'end');

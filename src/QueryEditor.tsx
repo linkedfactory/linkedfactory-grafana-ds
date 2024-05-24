@@ -206,7 +206,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
       return () => { };
     }, []);
 
-    const sparqlEndpoint = `${datasource.url}`.replace(/linkedfactory\//, "sparql") + "?model=http://linkedfactory.github.io/data/";
+    const sparqlEndpoint = `${datasource.url}`.replace("linkedfactory", "sparql") + "?model=http://linkedfactory.github.io/data/";
 
     return (
       <div>
