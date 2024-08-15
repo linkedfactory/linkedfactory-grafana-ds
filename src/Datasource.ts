@@ -72,13 +72,13 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       }
     
     //get all variables with the format $name in the query
-    let varsDynamicQuery = sparql.match(/\$[^\s]+/g)
+    let varsDynamicQuery = sparql.match(/\$(\w+)|\$\{[^\s]+\}+/g ) ;
         
     if (varsDynamicQuery != null)
       {
         for (let i = 0; i < varsDynamicQuery.length; i++) {
           let regex = new RegExp("\\" + varsDynamicQuery.at(i) , "g");
-          sparql = sparql.replace(regex, variables[varsDynamicQuery.at(i)!.substring(1)]);
+          sparql = (varsDynamicQuery.at(i)!.includes("${"))? sparql.replace(regex, variables[varsDynamicQuery.at(i)!.slice(2,-1)]) : sparql.replace(regex, variables[varsDynamicQuery.at(i)!.substring(1)]) ;
         }
       }
 
