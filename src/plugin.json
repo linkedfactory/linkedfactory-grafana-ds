@@ -1,0 +1,43 @@
+{
+  "type": "datasource",
+  "name": "LinkedFactory Datasource",
+  "id": "lf-datasource",
+  "metrics": true,
+  "info": {
+    "description": "LinkedFactory Datasource Plugin",
+    "author": {
+      "name": "Fraunhofer IWU and LinkedFactory Contributors",
+      "url": "https://linkedfactory.github.io/specification/"
+    },
+    "keywords": [
+      "LinkedFactory"
+    ],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://linkedfactory.github.io/specification/"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/grafana/grafana-starter-datasource/blob/master/LICENSE"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=10.4.0",
+    "plugins": []
+  },
+  "routes": [
+    {
+      "path": "linkedfactory",
+      "url": "http://localhost:8080/linkedfactory/"
+    }
+  ]
+}
