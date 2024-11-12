@@ -1,5 +1,5 @@
 import { DataSourcePlugin } from '@grafana/data';
-import { ConfigEditor } from '../../grafana-ds-2/src/components/ConfigEditor';
+import { ConfigEditor } from './components/ConfigEditor';
 import { DataSource } from './datasource';
 import { QueryEditor } from './components/QueryEditor';
 import { LFQuery, LFDataSourceOptions } from './types';
