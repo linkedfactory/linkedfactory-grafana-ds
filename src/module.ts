@@ -1,7 +1,7 @@
 import { DataSourcePlugin } from '@grafana/data';
-import { DataSource } from './Datasource';
-import { ConfigEditor } from './ConfigEditor';
-import { QueryEditor } from './QueryEditor';
+import { ConfigEditor } from '../../grafana-ds-2/src/components/ConfigEditor';
+import { DataSource } from './datasource';
+import { QueryEditor } from './components/QueryEditor';
 import { LFQuery, LFDataSourceOptions } from './types';
 
 export const plugin = new DataSourcePlugin<DataSource, LFQuery, LFDataSourceOptions>(DataSource)

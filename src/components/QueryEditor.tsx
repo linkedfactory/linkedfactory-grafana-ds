@@ -3,8 +3,8 @@ import defaults from 'lodash/defaults';
 import React, { useState, useEffect, useRef } from 'react';
 import { Select, MultiSelect, Button, useStyles2, SegmentSection, RadioButtonGroup, Label } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
-import { DataSource } from './Datasource';
-import { defaultQuery, LFDataSourceOptions, LFQuery } from './types';
+import { DataSource } from '../datasource';
+import { defaultQuery, LFDataSourceOptions, LFQuery } from '../types';
 import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 import { css, cx } from '@emotion/css';
 

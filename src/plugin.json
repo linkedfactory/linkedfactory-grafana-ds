@@ -1,5 +1,5 @@
 {
-"type": "datasource",
+  "type": "datasource",
   "name": "LinkedFactory Datasource",
   "id": "lf-datasource",
   "metrics": true,
@@ -13,8 +13,8 @@
       "LinkedFactory"
     ],
     "logos": {
-      "small": "img/linkedfactory-64x64.png",
-      "large": "img/linkedfactory-512x512.png"
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
     },
     "links": [
       {
@@ -27,11 +27,11 @@
       }
     ],
     "screenshots": [],
-    "version": "0.1.0",
-    "updated": "2022-05-06"
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
   },
   "dependencies": {
-    "grafanaDependency": ">=7.0.0",
+    "grafanaDependency": ">=10.4.0",
     "plugins": []
   },
   "routes": [

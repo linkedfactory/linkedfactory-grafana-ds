@@ -1,7 +1,3 @@
 {
-  "extends": "./.config/.eslintrc",
-  "rules": { 
-    "@typescript-eslint/no-namespace": "off",
-    "@typescript-eslint/array-type": "off"
-}
+  "extends": "./.config/.eslintrc"
 }

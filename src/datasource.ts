@@ -417,9 +417,9 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         throw err;
       }).then((r: FetchResponse<any>) => {
         if (r.status === 200) {
-          return { status: "success", message: "LinkedFactory enpoint online", title: "Success" }
+          return { status: "success", message: "LinkedFactory enpoint online" }
         }
-        return null;
+        return { status: "error", message: r.statusText ? r.statusText : "Connection failed" };
       });
   }
 }
