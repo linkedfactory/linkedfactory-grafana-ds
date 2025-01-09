@@ -60,6 +60,8 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     sparql = sparql.replace(/[?$]_from/g, fromTime.toString());
     sparql = sparql.replace(/[?$]_to/g, toTime.toString());
 
+    sparql = this.templateSrv.replace(sparql);
+
     console.log("final query", sparql);
 
     const fetchFunc = async (input: Request | string, init?: RequestInit): Promise<Response> => {
