@@ -1,14 +1,15 @@
 import * as _ from 'lodash';
 import { BackendSrvRequest, FetchResponse, TemplateSrv, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 import {
+  createDataFrame,
+  DataFrame,
   DataQueryRequest,
   DataQueryResponse,
   DataSourceApi,
   DataSourceInstanceSettings,
   Field,
   FieldDTO,
-  FieldType,
-  MutableDataFrame
+  FieldType
 } from '@grafana/data';
 import { EMPTY, concat, merge, from, Observable, firstValueFrom, fromEvent } from 'rxjs';
 import { map, reduce, mergeMap, toArray, concatMap, zipWith, takeUntil } from 'rxjs/operators';
@@ -52,7 +53,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     this.limitPerRequest = 10000;
   }
 
-  executeSparql(sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<MutableDataFrame> {
+  executeSparql(sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<DataFrame> {
     const fromTime = options.range.from.valueOf();
     const toTime = options.range.to.valueOf();
 
@@ -78,7 +79,6 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       if (this.settings.jsonData.user) {
         headers['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
       }
-
 
       let requestOptions: BackendSrvRequest = {
         url: request.url,
@@ -136,7 +136,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
           }
           fields.push(field);
         }
-        return new MutableDataFrame({
+        return createDataFrame({
           refId: refId,
           fields: fields
         });
@@ -322,7 +322,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
             // the simple case, just return one column
             return propertyNames.map(property => {
               let propertyData = data.properties[property];
-              return new MutableDataFrame({
+              return createDataFrame({
                 refId: t.refId,
                 fields: [
                   { name: 'Time', type: FieldType.time, values: propertyData.map(d => d.time) },
@@ -396,7 +396,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
             const property = propertyNames[propertyNr];
             fields.push({ name: this.compoundName(data.item, property), /*type: FieldType.number,*/ values: columnValues[propertyNr], labels: {} });
           }
-          return new MutableDataFrame({
+          return createDataFrame({
             refId: t.refId,
             fields: fields
           });
