@@ -75,6 +75,11 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         headers[header[0]] = header[1];
       }
 
+      if (this.settings.jsonData.user) {
+        headers['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
+      }
+
+
       let requestOptions: BackendSrvRequest = {
         url: request.url,
         data: request.body,
@@ -402,24 +407,14 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   }
 
   override async testDatasource() {
-    return getBackendSrv().datasourceRequest({
+    return firstValueFrom(getBackendSrv().fetch({
       url: this.url!,
       method: 'GET',
-    })
-      .catch((err: any) => {
-        if (err.data) {
-          const msg = err.data.error?.reason ?? err.data.message ?? 'Unknown Error';
-          throw {
-            message: 'LinkedFactory Error: ' + msg + ' ' + this.url,
-            error: err.data.error,
-          };
-        }
-        throw err;
-      }).then((r: FetchResponse<any>) => {
-        if (r.status === 200) {
-          return { status: "success", message: "LinkedFactory enpoint online" }
-        }
-        return { status: "error", message: r.statusText ? r.statusText : "Connection failed" };
-      });
+    })).then((r: FetchResponse<any>) => {
+      if (r.status === 200) {
+        return { status: "success", message: "LinkedFactory enpoint online" }
+      }
+      throw { status: "error", message: r.statusText ? r.statusText : "Connection failed" };
+    });
   }
 }
