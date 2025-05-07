@@ -172,7 +172,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
         </SegmentSection>
         <SegmentSection label="Transform">
           <div className={styles.sectionContent}>
-            <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator}></Select>
+            <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator || 'avg'}></Select>
           </div>
         </SegmentSection>
       </div>

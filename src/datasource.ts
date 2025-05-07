@@ -106,7 +106,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       timeout: 5000                             // Timeout for setting up server connection (Once a connection has been made, and the response is being parsed, the timeout does not apply anymore).
     });
 
-    const endpoint = this.url!.replace(/linkedfactory\//, "sparql");
+    const endpoint = this.url!.replace(/linkedfactory\/?/, "") + "sparql";
     const results = from(fetcher.fetchBindings(endpoint + "?model=http://linkedfactory.github.io/data/", sparql))
       .pipe(concatMap(stream => {
         const end = fromEvent(stream, 'end');
@@ -171,7 +171,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     }
 
     const requestOptions: BackendSrvRequest = {
-      url: this.url + '/values',
+      url: this.url!.replace(/\/$/, '') + '/values',
       params: params,
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -305,10 +305,11 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       if (t.sparql) {
         return that.executeSparql(t.sparql, t.refId, options);
       }
+      const op = t.operator && t.operator === '-' ? undefined : 'avg';
       return that.loadData(t.item, t.propertyPath, {
         limit: options.maxDataPoints,
-        interval: t.operator ? options.intervalMs : undefined,
-        op: t.operator
+        interval: op ? options.intervalMs : undefined,
+        op: op
       }, options.range.from.valueOf(), options.range.to.valueOf()).pipe(
         reduce((acc, data) => {
           Object.keys(data.properties).forEach(property => {
@@ -410,7 +411,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
 
   override async testDatasource() {
     return firstValueFrom(getBackendSrv().fetch({
-      url: this.url!,
+      url: this.url!.replace(/\/$/, '') + '/values',
       method: 'GET',
     })).then((r: FetchResponse<any>) => {
       if (r.status === 200) {
