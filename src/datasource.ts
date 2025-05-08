@@ -410,10 +410,16 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   }
 
   override async testDatasource() {
-    return firstValueFrom(getBackendSrv().fetch({
+    const requestOptions: BackendSrvRequest = {
       url: this.url!.replace(/\/$/, '') + '/values',
-      method: 'GET',
-    })).then((r: FetchResponse<any>) => {
+      method: 'GET'
+    }
+    // add header for Basic auth
+    if (this.settings.jsonData.user) {
+      requestOptions.headers!['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
+    }
+
+    return firstValueFrom(getBackendSrv().fetch(requestOptions)).then((r: FetchResponse<any>) => {
       if (r.status === 200) {
         return { status: "success", message: "LinkedFactory enpoint online" }
       }
