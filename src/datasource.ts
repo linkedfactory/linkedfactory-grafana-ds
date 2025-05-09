@@ -416,7 +416,9 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     }
     // add header for Basic auth
     if (this.settings.jsonData.user) {
-      requestOptions.headers!['Authorization'] = 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password);
+      requestOptions.headers = {
+        ...(requestOptions.headers || {}),
+        Authorization: 'Basic ' + btoa(this.settings.jsonData.user + ":" + this.settings.jsonData.password)};
     }
 
     return firstValueFrom(getBackendSrv().fetch(requestOptions)).then((r: FetchResponse<any>) => {
