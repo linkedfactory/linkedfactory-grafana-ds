@@ -236,10 +236,12 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
         </div>
       </SegmentSection>
       <SegmentSection label="Model">
-        <SegmentInput
-          onChange={handleModelChange}
-          placeholder="The LF model"
-          value={query.model || DEFAULT_MODEL}></SegmentInput>
+        <div className={styles.sectionContent}>
+          <SegmentInput
+            onChange={handleModelChange}
+            placeholder="The LF model"
+            value={query.model || DEFAULT_MODEL}></SegmentInput>
+        </div>
       </SegmentSection>
       {query.type === "kvin" && <Kvin />}
       {query.type === "sparql" && <Query />}
