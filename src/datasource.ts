@@ -14,7 +14,7 @@ import {
 import { EMPTY, concat, merge, from, Observable, firstValueFrom, fromEvent } from 'rxjs';
 import { map, reduce, mergeMap, toArray, concatMap, zipWith, takeUntil } from 'rxjs/operators';
 
-import { LFQuery, LFDataSourceOptions, PropertySpec } from './types';
+import { LFQuery, LFDataSourceOptions, PropertySpec, DEFAULT_MODEL } from './types';
 
 import { SparqlEndpointFetcher } from "fetch-sparql-endpoint";
 
@@ -53,7 +53,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     this.limitPerRequest = 10000;
   }
 
-  executeSparql(sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<DataFrame> {
+  executeSparql(model: string, sparql: string, refId: string, options: DataQueryRequest<LFQuery>): Observable<DataFrame> {
     const fromTime = options.range.from.valueOf();
     const toTime = options.range.to.valueOf();
 
@@ -107,7 +107,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     });
 
     const endpoint = this.url!.replace(/linkedfactory\/?/, "") + "sparql";
-    const results = from(fetcher.fetchBindings(endpoint + "?model=http://linkedfactory.github.io/data/", sparql))
+    const results = from(fetcher.fetchBindings(`${endpoint}?model=${model}`, sparql))
       .pipe(concatMap(stream => {
         const end = fromEvent(stream, 'end');
         return (fromEvent(stream, 'variables') as Observable<any>)
@@ -146,12 +146,13 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     return results;
   }
 
-  loadData(item: string, propertyPath: PropertySpec[], options: QueryOptions, fromTime?: number, toTime?: number): Observable<ItemData> {
+  loadData(model: string, item: string, propertyPath: PropertySpec[], options: QueryOptions, fromTime?: number, toTime?: number): Observable<ItemData> {
     console.log("load ", item, " ", propertyPath)
 
     let self = this;
     const limit = options.limit || this.limitPerRequest;
     const params: Record<string, any> = {
+      model: model,
       item: item,
       limit: limit,
       op: options.op,
@@ -201,7 +202,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                 // limit reached, fetch earlier blocks, keep from
                 // but stop at earliest time already read - 1
                 let localTo = propertyData[propertyData.length - 1].time - 1;
-                observables.push(self.loadData(item, [[property]], { limit: options.limit }, fromTime, localTo));
+                observables.push(self.loadData(model, item, [[property]], { limit: options.limit }, fromTime, localTo));
               }
             });
           });
@@ -224,7 +225,7 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
                 return from([{ item: item, properties: newProperties } as ItemData]);
               } else if (d.value['@id']) {
                 const pathRest = propertyPath.length > 2 ? propertyPath.slice(2) : [];
-                return self.loadData(d.value['@id'], [[p]].concat(pathRest), { limit: 1 }).pipe(map(data => {
+                return self.loadData(model, d.value['@id'], [[p]].concat(pathRest), { limit: 1 }).pipe(map(data => {
                   Object.entries(data.properties).forEach(([p, v]) => {
                     if (v.length > 0) {
                       // use time of source value
@@ -262,10 +263,10 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
   }
 
   // get properties for a given item
-  queryProperties(item: string, propertyPath?: PropertySpec[]): Observable<string[]> {
+  queryProperties(model: string, item: string, propertyPath?: PropertySpec[]): Observable<string[]> {
     if (propertyPath !== undefined && propertyPath.length) {
       // fetch properties via example value
-      return this.loadData(item, propertyPath, { limit: 1 }).pipe(map(data => {
+      return this.loadData(model, item, propertyPath, { limit: 1 }).pipe(map(data => {
         return Object.keys(data.properties);
       }));
     }
@@ -303,10 +304,10 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
     let that = this;
     const all = targets.map(t => {
       if (t.sparql) {
-        return that.executeSparql(t.sparql, t.refId, options);
+        return that.executeSparql(t.model || DEFAULT_MODEL, t.sparql, t.refId, options);
       }
       const op = t.operator && t.operator === '-' ? undefined : 'avg';
-      return that.loadData(t.item, t.propertyPath, {
+      return that.loadData(t.model || DEFAULT_MODEL, t.item, t.propertyPath, {
         limit: options.maxDataPoints,
         interval: op ? options.intervalMs : undefined,
         op: op

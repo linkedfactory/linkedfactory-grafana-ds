@@ -1,10 +1,10 @@
 import defaults from 'lodash/defaults';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Select, MultiSelect, Button, useStyles2, SegmentSection, RadioButtonGroup, Label } from '@grafana/ui';
+import { Select, MultiSelect, Button, useStyles2, SegmentSection, RadioButtonGroup, Label, SegmentInput } from '@grafana/ui';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
-import { defaultQuery, LFDataSourceOptions, LFQuery } from '../types';
+import { DEFAULT_MODEL, defaultQuery, LFDataSourceOptions, LFQuery } from '../types';
 import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
 import { css, cx } from '@emotion/css';
 
@@ -17,7 +17,7 @@ import "codemirror/theme/dracula.css";
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
-export const QueryEditor = (props: Props): JSX.Element => {
+export const QueryEditor = (props: Props): React.JSX.Element => {
   function getStyles(theme: GrafanaTheme2) {
     return {
       inlineLabel: css`
@@ -32,7 +32,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
   const styles = useStyles2(getStyles);
 
   const { query, datasource } = props;
-  const { propertyPath, item } = query;
+  const { propertyPath, item, model } = query;
 
   const [items, setItems] = useState([] as Array<SelectableValue<string>>);
   const [properties, setProperties] = useState([] as Array<Array<SelectableValue<string>>>);
@@ -75,7 +75,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
         // signal that we want any property
         localPropertyPath.push(["*"])
       }
-      return firstValueFrom(datasource.queryProperties(item, localPropertyPath).pipe(map(properties => {
+      return firstValueFrom(datasource.queryProperties(model || DEFAULT_MODEL, item, localPropertyPath).pipe(map(properties => {
         if (propertyPath && index < propertyPath.length) {
           const pathProperty = propertyPath[index];
           if (!properties.includes(pathProperty.toString())) {
@@ -103,7 +103,7 @@ export const QueryEditor = (props: Props): JSX.Element => {
     Promise.all(promises).then(propertyOptions => {
       setProperties(propertyOptions);
     });
-  }, [item, propertyPath, datasource]);
+  }, [model, item, propertyPath, datasource]);
 
   const operators = ["-", "min", "max", "avg", "sum"];
   const operatorOptions: Array<SelectableValue<string>> = operators.map(o => ({ label: o, value: o }));
@@ -152,6 +152,11 @@ export const QueryEditor = (props: Props): JSX.Element => {
   const handleQueryTypeChange = (value: string) => {
     const { onChange, query } = props;
     onChange({ ...query, type: value as any })
+  };
+
+  const handleModelChange = (value: string | number) => {
+    const { onChange, query } = props;
+    onChange({ ...query, model: value.toString() })
   };
 
   const Kvin = () => {
@@ -230,7 +235,12 @@ export const QueryEditor = (props: Props): JSX.Element => {
           <RadioButtonGroup options={options} value={query.type} onChange={handleQueryTypeChange} />
         </div>
       </SegmentSection>
-
+      <SegmentSection label="Model">
+        <SegmentInput
+          onChange={handleModelChange}
+          placeholder="The LF model"
+          value={query.model || DEFAULT_MODEL}></SegmentInput>
+      </SegmentSection>
       {query.type === "kvin" && <Kvin />}
       {query.type === "sparql" && <Query />}
     </div>

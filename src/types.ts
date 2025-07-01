@@ -10,6 +10,7 @@ export interface LFQuery extends DataQuery {
   operator: string;
   scale: number;
   sparql: string;
+  model: string;
 }
 
 export const defaultQuery: Partial<LFQuery> = {
@@ -32,3 +33,5 @@ export interface LFDataSourceOptions extends DataSourceJsonData {
 export interface LFSecureJsonData {
   apiKey?: string;
 }
+
+export const DEFAULT_MODEL = 'http://linkedfactory.github.io/data/';
