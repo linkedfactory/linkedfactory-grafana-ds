@@ -171,7 +171,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
                   placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
               </>
             })}
-            {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt'></Button> : null}
+            {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt' aria-label="Remove path element"></Button> : null}
             <Button className="gf-form-btn" onClick={pushPath}>/</Button>
           </div>
         </SegmentSection>
@@ -204,7 +204,8 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
         createShareableLink: false,
         editorHeight: "200",
         resizeable: false,
-        persistenceId: null
+        persistenceId: null,
+        showQueryButton: false,
       });
       (editor as any).setOption('theme', 'dracula');
       editor.setValue(query.sparql || '');
