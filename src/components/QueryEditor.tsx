@@ -14,6 +14,7 @@ import { catchError, map } from 'rxjs/operators';
 import "@triply/yasgui/build/yasgui.min.css";
 import { PartialConfig, default as Yasqe } from "@triply/yasqe";
 import "codemirror/theme/dracula.css";
+import { EditorField } from '@grafana/plugin-ui';
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
 
@@ -162,7 +163,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
 
   const Kvin = () => {
     return (
-      <div>
+      <>
         <SegmentSection label="Query">
           <div className={styles.sectionContent}>
             <Combobox options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} createCustomValue={true} />
@@ -181,7 +182,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
             <Combobox options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator || 'avg'} />
           </div>
         </SegmentSection>
-      </div>
+      </>
     );
   };
 
@@ -216,12 +217,14 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
     const sparqlEndpoint = `${datasource.url}`.replace(/linkedfactory\//, "sparql") + "?model=http://linkedfactory.github.io/data/";
 
     return (
-      <div>
+      <>
         <SegmentSection label="Endpoint">
           <Label>{sparqlEndpoint}</Label>
         </SegmentSection>
-        <div ref={containerRef}></div>
-      </div>
+        <EditorField label="SPARQL">
+          <div ref={containerRef}></div>
+        </EditorField>
+      </>
     );
   };
 
