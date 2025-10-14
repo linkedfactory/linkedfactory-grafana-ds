@@ -1,18 +1,18 @@
 import defaults from 'lodash/defaults';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Select, MultiSelect, Button, useStyles2, SegmentSection, RadioButtonGroup, Label, SegmentInput } from '@grafana/ui';
+import { css, cx } from '@emotion/css';
 import { GrafanaTheme2, QueryEditorProps, SelectableValue } from '@grafana/data';
+import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
+import { Button, Combobox, ComboboxOption, Label, MultiCombobox, RadioButtonGroup, SegmentInput, SegmentSection, useStyles2 } from '@grafana/ui';
+import React, { useEffect, useRef, useState } from 'react';
 import { DataSource } from '../datasource';
 import { DEFAULT_MODEL, defaultQuery, LFDataSourceOptions, LFQuery } from '../types';
-import { BackendSrvRequest, getBackendSrv } from '@grafana/runtime';
-import { css, cx } from '@emotion/css';
 
-import { firstValueFrom, EMPTY } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { EMPTY, firstValueFrom } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
-import { default as Yasqe, PartialConfig } from "@triply/yasqe";
 import "@triply/yasgui/build/yasgui.min.css";
+import { PartialConfig, default as Yasqe } from "@triply/yasqe";
 import "codemirror/theme/dracula.css";
 
 type Props = QueryEditorProps<DataSource, LFQuery, LFDataSourceOptions>;
@@ -34,12 +34,12 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
   const { query, datasource } = props;
   const { propertyPath, item, model } = query;
 
-  const [items, setItems] = useState([] as Array<SelectableValue<string>>);
-  const [properties, setProperties] = useState([] as Array<Array<SelectableValue<string>>>);
+  const [items, setItems] = useState([] as Array<ComboboxOption<string>>);
+  const [properties, setProperties] = useState([] as Array<Array<ComboboxOption<string>>>);
 
   useEffect(() => {
     // get all items
-    async function loadItems(): Promise<Array<SelectableValue<string>>> {
+    async function loadItems(): Promise<Array<ComboboxOption<string>>> {
       const settings = datasource.settings;
       const url = datasource.url!.replace(/\/?$/, '/**');
       const options: BackendSrvRequest = {
@@ -69,7 +69,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
 
   useEffect(() => {
     // get properties for a given item
-    async function loadProperties(index: number): Promise<Array<SelectableValue<string>>> {
+    async function loadProperties(index: number): Promise<Array<ComboboxOption<string>>> {
       const localPropertyPath = index === 0 ? undefined : propertyPath.slice(0, index)
       if (localPropertyPath) {
         // signal that we want any property
@@ -91,7 +91,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
       })));
     }
 
-    const promises: Array<Promise<Array<SelectableValue<string>>>> = [];
+    const promises: Array<Promise<Array<ComboboxOption<string>>>> = [];
     if (item) {
       promises.push(loadProperties(0));
       if (propertyPath && propertyPath.length) {
@@ -106,9 +106,9 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
   }, [model, item, propertyPath, datasource]);
 
   const operators = ["-", "min", "max", "avg", "sum"];
-  const operatorOptions: Array<SelectableValue<string>> = operators.map(o => ({ label: o, value: o }));
+  const operatorOptions: Array<ComboboxOption<string>> = operators.map(o => ({ label: o, value: o }));
 
-  const onItemChange = (value: SelectableValue<String>) => {
+  const onItemChange = (value: ComboboxOption<string>) => {
     const { onChange, query, onRunQuery } = props;
     query.item = value.value!.toString();
     onChange({ ...query });
@@ -164,11 +164,11 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
       <div>
         <SegmentSection label="Query">
           <div className={styles.sectionContent}>
-            <Select className="gf-form-input" options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} allowCustomValue={true}></Select>
+            <Combobox options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} createCustomValue={true} />
             {query.propertyPath.map((p, pathIndex) => {
               return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
-                <MultiSelect key={pathIndex} className="gf-form-input" options={properties[pathIndex]} onChange={onPropertyChange(pathIndex)}
-                  placeholder="Property" value={p} allowCustomValue={true}></MultiSelect>
+                <MultiCombobox key={pathIndex} options={properties[pathIndex] || []} onChange={onPropertyChange(pathIndex)}
+                  placeholder="Property" value={p} createCustomValue={true} />
               </>
             })}
             {query.propertyPath.length > 1 ? <Button className="gf-form-btn" onClick={popPath} icon='trash-alt' aria-label="Remove path element"></Button> : null}
@@ -177,7 +177,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
         </SegmentSection>
         <SegmentSection label="Transform">
           <div className={styles.sectionContent}>
-            <Select className="gf-form-input" options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator || 'avg'}></Select>
+            <Combobox options={operatorOptions} onChange={onOperatorChange} placeholder="Operator" value={query.operator || 'avg'} />
           </div>
         </SegmentSection>
       </div>

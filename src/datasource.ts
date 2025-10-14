@@ -306,6 +306,12 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
       if (t.sparql) {
         return that.executeSparql(t.model || DEFAULT_MODEL, t.sparql, t.refId, options);
       }
+
+      // skip queries without model or item
+      if (! (t.model && t.item)) {
+        return from([{ data: [] }]);
+      }
+
       const op = t.operator && t.operator === '-' ? undefined : 'avg';
       return that.loadData(t.model || DEFAULT_MODEL, t.item, t.propertyPath, {
         limit: options.maxDataPoints,
