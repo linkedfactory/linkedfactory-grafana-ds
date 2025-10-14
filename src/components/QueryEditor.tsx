@@ -25,6 +25,7 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
       `,
       sectionContent: cx('gf-form', css`
         flex: 1 1 auto;
+        gap: 4px;
       `),
     };
   }
