@@ -164,11 +164,15 @@ export const QueryEditor = (props: Props): React.JSX.Element => {
   const Kvin = () => {
     return (
       <>
-        <SegmentSection label="Query">
+        <SegmentSection label="Item">
           <div className={styles.sectionContent}>
-            <Combobox options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} createCustomValue={true} />
+            <Combobox options={items} onChange={onItemChange} placeholder="Item" value={localQuery.item} createCustomValue={true} />            
+          </div>
+        </SegmentSection>
+        <SegmentSection label="Properties">
+          <div className={styles.sectionContent}>
             {query.propertyPath.map((p, pathIndex) => {
-              return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <span></span>}
+              return <>{pathIndex > 0 ? <span>&nbsp;/&nbsp;</span> : <></>}
                 <MultiCombobox key={pathIndex} options={properties[pathIndex] || []} onChange={onPropertyChange(pathIndex)}
                   placeholder="Property" value={p} createCustomValue={true} />
               </>
