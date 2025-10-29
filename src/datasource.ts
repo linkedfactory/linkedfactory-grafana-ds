@@ -307,8 +307,8 @@ export class DataSource extends DataSourceApi<LFQuery, LFDataSourceOptions> {
         return that.executeSparql(t.model || DEFAULT_MODEL, t.sparql, t.refId, options);
       }
 
-      // skip queries without model or item
-      if (! (t.model && t.item)) {
+      // skip queries without item
+      if (! t.item) {
         return from([{ data: [] }]);
       }
 
