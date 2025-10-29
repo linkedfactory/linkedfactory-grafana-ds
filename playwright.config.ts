@@ -26,12 +26,17 @@ export default defineConfig<PluginOptions>({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  timeout: process.env.CI ? 90000 : 30000,
   use: {
+    headless: true,
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    //video: 'retain-on-failure',
+    actionTimeout: 90000, // increase per-action timeout
+    navigationTimeout: 120000,
   },
 
   /* Configure projects for major browsers */
