@@ -11,8 +11,7 @@ test('"Save & test" should be successful when configuration is valid', async ({
 
   await page.route('http://linkedfactory.pod.com/values', async (route) =>
     await route.fulfill({ status: 200, body: 'OK' }));
-  await configPage.ctx.page.getByLabel('URL').waitFor({ state: 'visible' });
-  await configPage.ctx.page.getByLabel("URL").fill('http://linkedfactory.pod.com');
+  await configPage.ctx.page.locator('label:has-text("URL") + input').fill('http://linkedfactory.pod.com');
   await expect(configPage.saveAndTest({ path: 'http://linkedfactory.pod.com' })).toBeOK();
 
 });
@@ -26,8 +25,7 @@ test('"Save & test" should display success alert box when config is valid', asyn
   const configPage = await createDataSourceConfigPage({ type: ds.type });
   await page.route('http://linkedfactory.pod.com/values', async (route) =>
     await route.fulfill({ status: 400, body: 'error' }));
-  await configPage.ctx.page.getByLabel('URL').waitFor({ state: 'visible' });
-  await configPage.ctx.page.getByLabel("URL").fill('http://linkedfactory.pod.com');
+  await configPage.ctx.page.locator('label:has-text("URL") + input').fill('http://linkedfactory.pod.com');
   configPage.saveAndTest({ path: 'http://linkedfactory.pod.com' })
   await expect(configPage).toHaveAlert('error');
 });
